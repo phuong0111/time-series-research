@@ -1,601 +1,525 @@
-"""Seminar deck: reproducing Read (2018). White background, black text, minimal."""
+"""Seminar deck: concept drift. White background, black text, formulae."""
+import re
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_LABEL_POSITION
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 from pptx.enum.text import PP_ALIGN
 
 BLACK = RGBColor(0x00, 0x00, 0x00)
-GREY  = RGBColor(0x80, 0x80, 0x80)
-LIGHT = RGBColor(0xD9, 0xD9, 0xD9)
+RULE  = RGBColor(0xBF, 0xBF, 0xBF)      # chart gridlines only; never text
 FONT  = "Calibri"
+MATH  = "Cambria Math"
 
 W, H = 13.333, 7.5
-M     = 0.7                      # slide margin
+M     = 0.7
 
 prs = Presentation()
-prs.slide_width  = Inches(W)
-prs.slide_height = Inches(H)
-BLANK = prs.slide_layouts[6]     # fully blank: no placeholders to fight
+prs.slide_width, prs.slide_height = Inches(W), Inches(H)
+BLANK = prs.slide_layouts[6]
+
+SUB, SUP = "-25000", "30000"
+_TOK = re.compile(r"([_^])\{([^}]*)\}|([_^])(\S)")
+
+
+def _emit(p, text, size, bold=False, italic=False, font=FONT):
+    """Render `text`, honouring _{...} and ^{...} as true sub/superscripts."""
+    pos, out = 0, []
+    for m in _TOK.finditer(text):
+        if m.start() > pos:
+            out.append((text[pos:m.start()], None))
+        mark = m.group(1) or m.group(3)
+        body = m.group(2) if m.group(2) is not None else m.group(4)
+        out.append((body, SUB if mark == "_" else SUP))
+        pos = m.end()
+    if pos < len(text):
+        out.append((text[pos:], None))
+    for chunk, base in out:
+        if chunk == "":
+            continue
+        r = p.add_run(); r.text = chunk
+        r.font.size = Pt(size * (0.72 if base else 1.0))
+        r.font.bold, r.font.italic = bold, italic
+        r.font.color.rgb = BLACK
+        r.font.name = font
+        if base:
+            r.font._rPr.set("baseline", base)
+    return p
 
 
 def slide(title=None, subtitle=None):
     s = prs.slides.add_slide(BLANK)
     if title:
-        tb = s.shapes.add_textbox(Inches(M), Inches(0.42), Inches(W-2*M), Inches(0.75))
+        tb = s.shapes.add_textbox(Inches(M), Inches(0.40), Inches(W-2*M), Inches(0.8))
         tf = tb.text_frame; tf.word_wrap = True
         tf.margin_left = tf.margin_top = tf.margin_bottom = 0
-        p = tf.paragraphs[0]; r = p.add_run(); r.text = title
-        r.font.size, r.font.bold, r.font.color.rgb, r.font.name = Pt(30), True, BLACK, FONT
+        _emit(tf.paragraphs[0], title, 32, bold=True)
     if subtitle:
-        tb = s.shapes.add_textbox(Inches(M), Inches(1.18), Inches(W-2*M), Inches(0.42))
+        tb = s.shapes.add_textbox(Inches(M), Inches(1.20), Inches(W-2*M), Inches(0.45))
         tf = tb.text_frame; tf.word_wrap = True
         tf.margin_left = tf.margin_top = tf.margin_bottom = 0
-        p = tf.paragraphs[0]; r = p.add_run(); r.text = subtitle
-        r.font.size, r.font.color.rgb, r.font.name = Pt(15), GREY, FONT
-        r.font.italic = True
+        _emit(tf.paragraphs[0], subtitle, 17)
     return s
 
 
-def bullets(s, items, top=1.85, left=M, width=None, size=16, gap=11):
-    """items: list of (text, bold, indent_level)."""
+def bullets(s, items, top=1.9, left=M, width=None, size=17, gap=10):
     width = width or (W - 2*M)
-    tb = s.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(H-top-0.6))
+    tb = s.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(H-top-0.5))
     tf = tb.text_frame; tf.word_wrap = True
     tf.margin_left = tf.margin_top = tf.margin_bottom = 0
     for i, (text, bold, lvl) in enumerate(items):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.level = lvl
-        p.space_after = Pt(gap)
-        r = p.add_run(); r.text = text
-        r.font.size = Pt(size - 2*lvl)
-        r.font.bold = bold
-        r.font.color.rgb = BLACK if lvl == 0 else GREY if lvl > 1 else BLACK
-        r.font.name = FONT
+        p.level, p.space_after = lvl, Pt(gap)
+        _emit(p, text, size - 1*lvl, bold=bold)
     return tb
 
 
-def note(s, text):
-    s.notes_slide.notes_text_frame.text = text
+def eq(s, text, top, left=M, size=24, width=None):
+    """A display formula, set in a math face."""
+    tb = s.shapes.add_textbox(Inches(left), Inches(top),
+                              Inches(width or (W-2*M)), Inches(0.62))
+    tf = tb.text_frame; tf.word_wrap = True
+    tf.margin_left = tf.margin_top = tf.margin_bottom = 0
+    _emit(tf.paragraphs[0], text, size, italic=True, font=MATH)
+    return tb
 
 
-def table(s, rows, left, top, width, height, col_w=None, size=13, header=True, align=None):
+def table(s, rows, left, top, width, height, col_w=None, size=16,
+          header=True, align=None):
     nr, nc = len(rows), len(rows[0])
-    shp = s.shapes.add_table(nr, nc, Inches(left), Inches(top), Inches(width), Inches(height))
-    tbl = shp.table
+    tbl = s.shapes.add_table(nr, nc, Inches(left), Inches(top),
+                             Inches(width), Inches(height)).table
     tbl.first_row = header
     if col_w:
-        total = sum(col_w)
+        tot = sum(col_w)
         for j, cw in enumerate(col_w):
-            tbl.columns[j].width = Emu(int(Inches(width) * cw / total))
+            tbl.columns[j].width = Emu(int(Inches(width) * cw / tot))
     for i, row in enumerate(rows):
         for j, val in enumerate(row):
             c = tbl.cell(i, j)
             c.text = ""
             c.margin_left = c.margin_right = Inches(0.08)
             c.margin_top = c.margin_bottom = Inches(0.03)
-            c.fill.solid(); c.fill.fore_color.rgb = RGBColor(0xFF,0xFF,0xFF)
+            c.fill.solid(); c.fill.fore_color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
             p = c.text_frame.paragraphs[0]
-            a = (align[j] if align else ("l" if j == 0 else "r"))
+            a = align[j] if align else ("l" if j == 0 else "r")
             p.alignment = PP_ALIGN.LEFT if a == "l" else PP_ALIGN.RIGHT
-            r = p.add_run(); r.text = str(val)
-            r.font.size = Pt(size)
-            r.font.bold = (i == 0 and header)
-            r.font.color.rgb = BLACK
-            r.font.name = FONT
+            _emit(p, str(val), size, bold=(i == 0 and header))
     return tbl
 
 
-def style_chart(chart, legend=True, labels=True, num_fmt='0.0'):
-    chart.font.size = Pt(12); chart.font.name = FONT; chart.font.color.rgb = BLACK
+def style_chart(chart, legend=True, num_fmt="0.0"):
+    chart.font.size = Pt(14); chart.font.name = FONT; chart.font.color.rgb = BLACK
     chart.has_title = False
     if legend:
         chart.has_legend = True
         chart.legend.position = XL_LEGEND_POSITION.TOP
         chart.legend.include_in_layout = False
-        chart.legend.font.size = Pt(12)
+        chart.legend.font.size = Pt(14); chart.legend.font.color.rgb = BLACK
     else:
         chart.has_legend = False
-    try:
-        va = chart.value_axis
-        va.has_major_gridlines = True
-        va.major_gridlines.format.line.color.rgb = LIGHT
-        va.major_gridlines.format.line.width = Pt(0.75)
-        va.tick_labels.font.size = Pt(11); va.tick_labels.font.color.rgb = GREY
-        va.format.line.color.rgb = LIGHT
-    except Exception:
-        pass
-    try:
-        ca = chart.category_axis
-        ca.has_major_gridlines = False
-        ca.tick_labels.font.size = Pt(11); ca.tick_labels.font.color.rgb = BLACK
-        ca.format.line.color.rgb = GREY
-    except Exception:
-        pass
-    if labels:
-        pl = chart.plots[0]
-        pl.has_data_labels = True
-        dl = pl.data_labels
-        dl.font.size = Pt(10); dl.font.color.rgb = BLACK; dl.font.name = FONT
-        dl.number_format = num_fmt
-        dl.number_format_is_linked = False
+    va = chart.value_axis
+    va.has_major_gridlines = True
+    va.major_gridlines.format.line.color.rgb = RULE
+    va.major_gridlines.format.line.width = Pt(0.75)
+    va.tick_labels.font.size = Pt(13); va.tick_labels.font.color.rgb = BLACK
+    va.format.line.color.rgb = RULE
+    ca = chart.category_axis
+    ca.has_major_gridlines = False
+    ca.tick_labels.font.size = Pt(13); ca.tick_labels.font.color.rgb = BLACK
+    ca.format.line.color.rgb = BLACK
+    pl = chart.plots[0]
+    pl.has_data_labels = True
+    dl = pl.data_labels
+    dl.font.size = Pt(12); dl.font.color.rgb = BLACK; dl.font.name = FONT
+    dl.number_format = num_fmt; dl.number_format_is_linked = False
     for i, ser in enumerate(chart.series):
-        ser.format.fill.solid()
-        ser.format.fill.fore_color.rgb = BLACK if i == 0 else GREY
-        ser.format.line.color.rgb = BLACK if i == 0 else GREY
+        col = BLACK if i == 0 else RGBColor(0x8C, 0x8C, 0x8C)
+        ser.format.fill.solid(); ser.format.fill.fore_color.rgb = col
+        ser.format.line.color.rgb = col
 
 
-def section(label, items):
-    """Divider: section number and title, plus what it covers."""
+def section(label, line):
     s = prs.slides.add_slide(BLANK)
-    tb = s.shapes.add_textbox(Inches(M), Inches(2.6), Inches(W-2*M), Inches(1.0))
+    tb = s.shapes.add_textbox(Inches(M), Inches(2.7), Inches(W-2*M), Inches(1.0))
     tf = tb.text_frame; tf.margin_left = 0; tf.word_wrap = True
-    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.LEFT
-    r = p.add_run(); r.text = label
-    r.font.size, r.font.bold, r.font.color.rgb, r.font.name = Pt(34), True, BLACK, FONT
-    bullets(s, [(i, False, 0) for i in items], top=3.8, size=16, gap=7)
+    tf.paragraphs[0].alignment = PP_ALIGN.LEFT
+    _emit(tf.paragraphs[0], label, 36, bold=True)
+    bullets(s, [(line, False, 0)], top=3.9, size=18)
     return s
 
 
-# =====================================================================
-# 1. Title
-# =====================================================================
-s = slide()
-tb = s.shapes.add_textbox(Inches(M), Inches(2.4), Inches(W-2*M), Inches(1.4))
+# 1. Title -----------------------------------------------------------------
+s = prs.slides.add_slide(BLANK)
+tb = s.shapes.add_textbox(Inches(M), Inches(2.4), Inches(W-2*M), Inches(1.5))
 tf = tb.text_frame; tf.word_wrap = True; tf.margin_left = 0
-p = tf.paragraphs[0]; r = p.add_run()
-r.text = "Concept Drift in Data Streams"
-r.font.size, r.font.bold, r.font.color.rgb, r.font.name = Pt(40), True, BLACK, FONT
-p2 = tf.add_paragraph(); r = p2.add_run()
-r.text = "The problem, the field's answers, and a reproduction"
-r.font.size, r.font.color.rgb, r.font.name = Pt(22), GREY, FONT
-tb = s.shapes.add_textbox(Inches(M), Inches(4.6), Inches(W-2*M), Inches(0.6))
-tf = tb.text_frame; tf.margin_left = 0
-p = tf.paragraphs[0]; r = p.add_run()
-r.text = "Seminar presentation"
-r.font.size, r.font.color.rgb, r.font.name = Pt(14), GREY, FONT
+_emit(tf.paragraphs[0], "Concept Drift in Data Streams", 42, bold=True)
+_emit(tf.add_paragraph(), "Formulation, methods, and a reproduction of Read (2018)", 22)
+bullets(s, [("Seminar presentation", False, 0)], top=4.7, size=17)
 
-# =====================================================================
-# 2. Outline
-# =====================================================================
+# 2. Outline ---------------------------------------------------------------
 s = slide("Outline")
 table(s, [
-    ["", "", ""],
-    ["1", "What concept drift is", "definition, taxonomy, what actually moves"],
-    ["2", "How the field responds", "detection, and the three adaptation mechanisms"],
-    ["3", "Read (2018): drift is a time series", "the argument for tracking instead of detecting"],
-    ["4", "Reproduction", "all six methods rebuilt; what holds and what does not"],
-    ["5", "Where the field went after", "normalisation, online ensembles, proactive adaptation"],
-    ["6", "Open problems", "what is still unanswered, and what to test next"],
-], left=M, top=1.55, width=W-2*M, height=3.6, col_w=[0.5,4.2,6.5], size=16,
+    ["1", "Formulation", "definition, taxonomy, and which factor of the joint moves"],
+    ["2", "Methods", "drift detection, and the three adaptation mechanisms"],
+    ["3", "Read (2018)", "the argument that a drifting stream is a time series"],
+    ["4", "Reproduction", "Table 2's methods rebuilt; results and discrepancies"],
+    ["5", "Subsequent work", "normalisation, online ensembles, proactive adaptation"],
+    ["6", "Open problems", "unresolved questions and proposed experiments"],
+], left=M, top=1.7, width=W-2*M, height=3.9, col_w=[0.4,2.6,8.4], size=18,
    align=["l","l","l"], header=False)
 
-# =====================================================================
-# 3. Section 1
-# =====================================================================
-section("1.  What concept drift is",
-        ["A stream is not a dataset: the thing being learned changes while you learn it."])
+# 3. Section 1 -------------------------------------------------------------
+section("1.  Formulation",
+        "The target distribution is a function of time, not a fixed object.")
 
-# =====================================================================
-# 4. Definition
-# =====================================================================
-s = slide("The problem", "why streams break the standard assumption")
+# 4. Definition ------------------------------------------------------------
+s = slide("The problem", "supervised learning assumes a distribution that streams do not provide")
 bullets(s, [
-    ("Supervised learning assumes a fixed joint distribution p(x, y). Draw a training set,", False, 0),
-    ("fit a model, deploy it, and the world it was fitted to is the world it will meet.", False, 0),
-    ("A data stream breaks that assumption in the most basic way:", True, 0),
-    ("p_t(y | x)  is not  p_t+k(y | x)", True, 1),
-    ("The mapping from input to label is itself a function of time. A model is not merely", False, 0),
-    ("stale - it is fitted to a target that no longer exists.", False, 0),
-    ("Where it happens: electricity demand, fraud, network intrusion, recommendation,", False, 0),
-    ("industrial sensors. Anywhere behaviour, adversaries or seasons move.", False, 0),
-    ("Two consequences that shape everything after:", True, 0),
-    ("accuracy degrades silently - nothing errors, the model is just wrong more often", False, 1),
-    ("you cannot retrain from scratch: the stream is unbounded and labels arrive late", False, 1),
-], top=1.9, size=16, gap=6)
+    ("Batch learning assumes a fixed joint distribution p(x, y): a model fitted to a", False, 0),
+    ("sample generalises because the sample and the deployment share that law.", False, 0),
+    ("In a data stream the law itself evolves.", True, 0),
+], top=1.85, size=18, gap=8)
+eq(s, "p_{t}(y | x)  ≠  p_{t+k}(y | x)", top=3.45, size=28)
+bullets(s, [
+    ("The mapping from input to label is time-dependent, so a deployed model is not", False, 0),
+    ("stale but misspecified: it estimates a target that no longer exists.", False, 0),
+    ("Two consequences constrain every method that follows:", True, 0),
+    ("degradation is silent — no failure is raised, the error rate simply rises", False, 1),
+    ("retraining from scratch is unavailable — the stream is unbounded, labels are late", False, 1),
+], top=4.35, size=17, gap=8)
 
-# =====================================================================
-# 5. Taxonomy
-# =====================================================================
-s = slide("Taxonomy: four shapes of drift", "Gama et al. (2014), and Read's sections 3.1 - 3.4")
+# 5. Taxonomy --------------------------------------------------------------
+s = slide("Taxonomy", "Gama et al. (2014); Read (2018) §3.1–3.4")
 table(s, [
-    ["type", "what happens", "example"],
-    ["Sudden", "one concept replaces another at a point", "a sensor is recalibrated"],
-    ["Incremental", "the concept moves through intermediate states", "a machine wears down"],
-    ["Gradual", "two concepts alternate, one winning over time", "a habit is adopted"],
-    ["Recurring", "concepts return, often periodically", "weekday vs weekend demand"],
-], left=M, top=1.95, width=W-2*M, height=2.6, col_w=[1.8,5.2,4], size=15,
+    ["type", "behaviour", "intermediate states"],
+    ["Sudden", "one concept replaces another at a change point", "none"],
+    ["Incremental", "the concept advances through a sequence of states", "genuine concepts"],
+    ["Gradual", "two concepts alternate, mixing weight shifting", "no new concepts"],
+    ["Recurring", "concepts return, frequently with a period", "previously seen"],
+], left=M, top=1.85, width=W-2*M, height=2.8, col_w=[1.8,5.6,3.4], size=17,
    align=["l","l","l"])
 bullets(s, [
-    ("The distinction that matters for method design is whether intermediate states are", False, 0),
-    ("REAL concepts. Under incremental drift they are, so there is a path to follow.", False, 0),
-    ("Under gradual drift there is not - the concept alternates between two fixed points,", False, 0),
-    ("and it is the mixing weight, not the concept, that evolves smoothly.", False, 0),
-    ("Recurring drift is a separate axis: any of the four can repeat, and whether it does", False, 0),
-    ("decides whether storing old models beats re-learning them.", False, 0),
-], top=4.85, size=15, gap=3)
+    ("The third column governs method design. Incremental drift admits a path through", False, 0),
+    ("parameter space; gradual drift does not, since the concept alternates between two", False, 0),
+    ("fixed points and only the mixing weight evolves smoothly.", False, 0),
+], top=5.0, size=17, gap=6)
 
-# =====================================================================
-# 6. What actually moves
-# =====================================================================
-s = slide("What actually moves", "p(x, y) = p(x) p(y | x) - so there are two places to look")
+# 6. What moves ------------------------------------------------------------
+s = slide("Which factor moves", "the joint admits exactly two loci of change")
+eq(s, "p(x, y)  =  p(x) · p(y | x)", top=1.85, size=28)
 table(s, [
-    ["", "definition", "also called", "typical remedy"],
-    ["Virtual drift / temporal shift", "p(x) moves, p(y|x) stable", "covariate shift", "normalisation"],
-    ["Real concept drift", "p(y|x) moves", "concept drift proper", "adaptation"],
-], left=M, top=1.95, width=W-2*M, height=1.9, col_w=[3.4,3.4,2.6,2.6], size=14,
+    ["", "definition", "conventional name", "typical remedy"],
+    ["Virtual drift", "p(x) changes, p(y | x) fixed", "covariate shift", "normalisation"],
+    ["Real concept drift", "p(y | x) changes", "concept drift", "adaptation"],
+], left=M, top=2.75, width=W-2*M, height=1.9, col_w=[2.8,3.8,2.8,2.6], size=16,
    align=["l","l","l","l"])
 bullets(s, [
-    ("Only the second changes the decision boundary, so only the second necessarily", False, 0),
-    ("costs accuracy. The distinction is not academic:", False, 0),
-    ("Most work published 2022-2024 addresses the FIRST - RevIN, Dish-TS, SAN all", True, 0),
-    ("normalise away shifting marginals and leave the conditional untouched.", True, 0),
-    ("A recent framing (ShifTS, 2025) makes the split formal and notes that concept drift", False, 0),
-    ("\"has received comparatively less attention\" in time-series forecasting.", False, 0),
-    ("Detecting drift without labels is therefore ambiguous by construction: an unlabelled", False, 0),
-    ("detector sees p(x) move and cannot tell whether the boundary moved with it.", False, 0),
-], top=4.2, size=15, gap=5)
+    ("Only the second displaces the decision boundary, and therefore only the second", False, 0),
+    ("necessarily costs accuracy. Most recent forecasting work addresses the first:", False, 0),
+    ("RevIN, Dish-TS and SAN normalise shifting marginals and leave p(y | x) untouched.", False, 0),
+    ("An unlabelled detector observes only p(x), and so cannot distinguish the two cases.", True, 0),
+], top=4.95, size=17, gap=7)
 
-# =====================================================================
-# 7. Context drift: three senses
-# =====================================================================
-s = slide("\"Context drift\" names three different things", "worth separating before reading any of the literature")
+# 7. Context drift ---------------------------------------------------------
+s = slide("Three referents of “context drift”", "the term is used for distinct phenomena with opposed remedies")
 table(s, [
-    ["sense", "what moves", "the fix it implies"],
-    ["1.  Concept drift proper", "p(y | x) genuinely moves over time", "track or reset the model"],
-    ["2.  Context-driven shift (CDS)", "p(y | x, c) is stable; c was never a feature",
-     "condition on c, do not adapt"],
-    ["3.  Context-window drift", "a foundation model's inference window leaves\nits pretraining distribution",
-     "adapt at inference, not in weights"],
-], left=M, top=1.95, width=W-2*M, height=2.9, col_w=[3.4,5.2,3.4], size=14,
+    ["sense", "what changes", "implied response"],
+    ["Concept drift", "p(y | x) changes with t", "track or reset the model"],
+    ["Context-driven shift", "p(y | x, c) fixed; c omitted from the model", "condition on c"],
+    ["Context-window drift", "the inference window leaves the pretraining law", "adapt at inference"],
+], left=M, top=1.85, width=W-2*M, height=2.5, col_w=[2.8,5.6,3.4], size=17,
    align=["l","l","l"])
 bullets(s, [
-    ("Senses 1 and 2 produce the SAME symptom - rising error that correlates with time -", True, 0),
-    ("and demand opposite responses. If a periodic context explains the change, adapting", True, 0),
-    ("to it is wasted work that will be undone on the next cycle.", True, 0),
-    ("SOLID / Reconditionor (KDD'24) scores this directly: mutual information between a", False, 0),
-    ("model's prediction residuals and the candidate context.", False, 0),
-], top=5.05, size=15, gap=4)
+    ("The first two present the same symptom — error correlated with time — and require", True, 0),
+    ("opposite responses. Where a periodic context accounts for the change, adaptation is", True, 0),
+    ("wasted and will be reversed on the following cycle.", True, 0),
+    ("SOLID (KDD'24) scores the second directly, by mutual information between prediction", False, 0),
+    ("residuals and the candidate context:", False, 0),
+], top=4.6, size=17, gap=6)
+eq(s, "I(E_{t} ; c_{t})", top=6.35, size=26)
 
-# =====================================================================
-# 8. Section 2
-# =====================================================================
-section("2.  How the field responds",
-        ["Two questions: how do you know drift happened, and what do you do about it?"])
+# 8. Section 2 -------------------------------------------------------------
+section("2.  Methods",
+        "Detecting that drift occurred, and adapting the model once it has.")
 
-# =====================================================================
-# 9. Detection
-# =====================================================================
-s = slide("Detection: monitoring the error signal")
-bullets(s, [
-    ("The classical approach treats drift as an event to detect, then resets the model.", False, 0),
-    ("Detectors watch the error stream, not the data:", False, 0),
-], top=1.5, size=16, gap=5)
+# 9. Detection -------------------------------------------------------------
+s = slide("Drift detection", "detectors observe the error sequence, not the data")
 table(s, [
-    ["detector", "test", "guarantee"],
-    ["DDM (2004)", "error rate exceeds a running minimum by k sigma", "heuristic thresholds"],
-    ["EDDM (2006)", "distance between errors shrinks", "better on gradual drift"],
-    ["ADWIN (2007)", "split a window; cut when two halves differ", "false positives bounded by delta"],
-], left=M, top=2.4, width=W-2*M, height=2.2, col_w=[2,5.4,4.4], size=14,
+    ["detector", "test statistic", "guarantee"],
+    ["DDM (2004)", "error rate exceeds a running minimum by kσ", "heuristic thresholds"],
+    ["EDDM (2006)", "distance between consecutive errors contracts", "improved on gradual drift"],
+    ["ADWIN (2007)", "window split; cut when the two halves differ", "false positives bounded by δ"],
+], left=M, top=1.85, width=W-2*M, height=2.5, col_w=[2,5.6,3.8], size=17,
    align=["l","l","l"])
 bullets(s, [
-    ("ADWIN is the de facto default - it keeps an exponential histogram, so the memory is", False, 0),
-    ("O(log W), and the window length is itself the estimate of how far back the current", False, 0),
-    ("concept extends.", False, 0),
-    ("Note what a detector is: it reads E_t over time and decides whether that series has", True, 0),
-    ("changed. Every drift detector is already a time-series method.", True, 0),
-], top=4.8, size=15, gap=3)
+    ("ADWIN maintains an exponential histogram, giving O(log W) memory, and the surviving", False, 0),
+    ("window length is itself an estimate of the current concept's extent.", False, 0),
+    ("A detector reads E_{t} over time and decides whether that sequence has changed.", True, 0),
+    ("Every drift detector is therefore already a time-series method.", True, 0),
+], top=4.65, size=17, gap=8)
 
-# =====================================================================
-# 10. Evaluation problems
-# =====================================================================
-s = slide("The evaluation problem", "why detector comparisons are hard to trust")
+# 10. Evaluation -----------------------------------------------------------
+s = slide("Limitations of the evaluation protocol")
 bullets(s, [
-    ("Synthetic benchmarks dominate.", True, 0),
-    ("Streams switch between predefined concepts at fixed times, with simplified", False, 1),
-    ("distributions and unrealistic dynamics. Transfer to real streams is unestablished.", False, 1),
-    ("Proxy evaluation conflates two things.", True, 0),
-    ("Judging a detector by whether retraining helps mixes detector quality with model", False, 1),
-    ("adaptability, and reveals neither detection accuracy nor timing.", False, 1),
-    ("Label delay invalidates the classics.", True, 0),
-    ("DDM, EDDM and ADWIN all assume labels arrive immediately. In fraud detection", False, 1),
-    ("ground truth arrives 30-180 days later, so they are inapplicable in original form.", False, 1),
-    ("This last point cuts both ways: if the error signal itself is unobservable for months,", False, 0),
-    ("then so is any method - detector or tracker - that depends on it.", False, 0),
-], top=1.9, size=15, gap=5)
+    ("Synthetic benchmarks predominate.", True, 0),
+    ("Streams switch between predefined concepts at fixed times; transfer to real", False, 1),
+    ("data is unestablished.", False, 1),
+    ("Proxy evaluation conflates two quantities.", True, 0),
+    ("Assessing a detector by whether retraining improves accuracy confounds detector", False, 1),
+    ("quality with model adaptability, and measures neither accuracy nor latency.", False, 1),
+    ("Verification latency invalidates the classical detectors.", True, 0),
+    ("DDM, EDDM and ADWIN assume immediate labels. In fraud detection ground truth", False, 1),
+    ("arrives after 30–180 days, so they are inapplicable in their original form.", False, 1),
+    ("Where the error signal is unobservable for months, so is any method depending on it.", False, 0),
+], top=1.6, size=17, gap=6)
 
-# =====================================================================
-# 11. Three mechanisms
-# =====================================================================
-s = slide("Adaptation: three mechanisms, and only three", "what the model is made of decides what 'adapt' can mean")
+# 11. Mechanisms -----------------------------------------------------------
+s = slide("Three adaptation mechanisms", "the model's representation determines what adaptation can mean")
 table(s, [
-    ["mechanism", "model is made of", "adapts by", "in Theta?", "can move a little?"],
-    ["Forgetting (kNN, SAMkNN)", "data", "replacing data", "no", "no - swap"],
-    ["Detect + reset (HT, RF-HT)", "structure", "rebuilding it", "no", "no - rebuild"],
-    ["Continuous (SGD)", "numbers", "shifting them", "yes", "yes"],
-], left=M, top=2.0, width=W-2*M, height=2.3, col_w=[3,2,2,1.4,2], size=14,
+    ["mechanism", "representation", "adapts by", "in Θ?", "admits Δθ?"],
+    ["Forgetting — kNN, SAMkNN", "stored data", "replacing data", "no", "no"],
+    ["Detect and reset — HT, RF-HT", "a structure", "rebuilding it", "no", "no"],
+    ["Continuous — SGD", "a vector", "displacing it", "yes", "yes"],
+], left=M, top=1.9, width=W-2*M, height=2.4, col_w=[3.4,2.2,2.2,1.2,1.6], size=17,
    align=["l","l","l","l","l"])
 bullets(s, [
-    ("A tree has no delta-theta.", True, 0),
-    ("Its parameters are a discrete structure - nodes and thresholds - so there is no small", False, 0),
-    ("step to take. It can only be grown or destroyed. A buffer is the same: the model IS", False, 0),
-    ("the stored data, so adapting means replacing it wholesale.", False, 0),
-    ("Only a model whose parameters live in a continuous space can move a little, and that", False, 0),
-    ("is the entire basis of the argument in the next section.", False, 0),
-], top=4.7, size=15, gap=4)
+    ("A tree admits no Δθ. Its parameters form a discrete structure, so no small", True, 0),
+    ("displacement exists; it can only be grown or destroyed. A buffer is equivalent: the", False, 0),
+    ("model is the stored data, and adaptation means replacing it.", False, 0),
+    ("Only a model whose parameters occupy a continuous space can be displaced slightly,", False, 0),
+    ("which is the premise of the argument in §3.", False, 0),
+], top=4.6, size=17, gap=7)
 
-# =====================================================================
-# 12. Section 3
-# =====================================================================
-section("3.  Read (2018): drifting streams are time series",
-        ["arXiv:1810.02266 - The Case for Continuous Adaptation"])
+# 12. Section 3 ------------------------------------------------------------
+section("3.  Read (2018)",
+        "arXiv:1810.02266 — Concept-drifting Data Streams are Time Series")
 
-# =====================================================================
-# 13. The claim + Lemma 1
-# =====================================================================
-s = slide("The contradiction", "Lemma 1, and why the asymptotic escape fails")
+# 13. Lemma 1 --------------------------------------------------------------
+s = slide("The contradiction", "Lemma 1, and the failure of the asymptotic objection")
 bullets(s, [
-    ("The field assumes instances are i.i.d. WITHIN a concept, and treats drift as an event", False, 0),
-    ("to detect so an i.i.d. model can be reset and redeployed. That is self-contradictory.", False, 0),
-    ("Lemma 1.  A stream with concept drift necessarily exhibits temporal dependence.", True, 0),
-    ("Under independence we would need P(C_t) = P(C_t | C_t-1). Counted on a 20-step", False, 0),
-    ("stream with the change point at tau = 10:", False, 0),
-], top=1.85, size=15, gap=4)
-table(s, [["", "value"], ["P(C_t = 0)", "0.450"], ["P(C_t = 0 | C_t-1 = 1)", "0.000"]],
-      left=M, top=4.0, width=4.2, height=1.15, size=14)
+    ("The literature assumes instances are i.i.d. within a concept and treats drift as an", False, 0),
+    ("event to detect, so that an i.i.d. model may be reset and redeployed.", False, 0),
+    ("Lemma 1.  A stream exhibiting concept drift exhibits temporal dependence.", True, 0),
+    ("Independence would require P(C_{t}) = P(C_{t} | C_{t−1}). Measured on a 20-step stream", False, 0),
+    ("with change point τ = 10:", False, 0),
+], top=1.8, size=17, gap=6)
+eq(s, "P(C_{t} = 0) = 0.450          P(C_{t} = 0 | C_{t−1} = 1) = 0.000", top=4.2, size=24)
 bullets(s, [
-    ("The objection: as t grows the concept indicator becomes constant, so independence", False, 0),
-    ("returns within each concept.", False, 0),
-    ("The reply turns on one fact - the change point is not observed.", True, 0),
-    ("Knowing it would let you split the stream and treat each side as i.i.d. You do not,", False, 0),
-    ("so an instantaneous jump appears as dependence in the error signal over many steps.", False, 0),
-], top=5.35, size=14, gap=2)
+    ("The objection is that the concept indicator becomes constant as t grows.", False, 0),
+    ("The reply is that τ is not observed. Knowledge of τ would permit partitioning the", True, 0),
+    ("stream and treating each side as i.i.d.; absent it, an instantaneous change appears", False, 0),
+    ("as dependence in the error signal over many instances.", False, 0),
+], top=5.05, size=17, gap=6)
 
-# =====================================================================
-# 14. Trajectory
-# =====================================================================
-s = slide("The reframing: drift as a trajectory", "a concept is a point in parameter space; drift is a path through it")
+# 14. Trajectory -----------------------------------------------------------
+s = slide("Drift as a trajectory", "a concept is a point θ ∈ Θ; drift is a path through Θ")
 table(s, [
-    ["type", "trajectory of theta", "is there a path to follow?"],
-    ["Sudden", "theta resampled from the prior at tau", "no - a discontinuity"],
-    ["Incremental", "theta_t = A_0.01^T theta_t-1, a rotation", "yes"],
-    ["Gradual", "theta alternates between two fixed points", "no - alpha_t moves, not theta"],
-    ["Recurring", "a cycle through a finite concept set", "yes, and it repeats"],
-], left=M, top=1.95, width=W-2*M, height=2.6, col_w=[1.8,4.8,4.4], size=15,
+    ["type", "trajectory", "path to follow?"],
+    ["Sudden", "θ resampled from the prior at τ", "no — a discontinuity"],
+    ["Incremental", "θ_{t} = A^{⊤}θ_{t−1}, a rotation of 0.01 rad", "yes"],
+    ["Gradual", "θ alternates between two fixed points", "no — α_{t} evolves, not θ"],
+    ["Recurring", "a cycle through a finite set of concepts", "yes, and it repeats"],
+], left=M, top=1.85, width=W-2*M, height=2.6, col_w=[1.8,5.4,3.6], size=17,
    align=["l","l","l"])
 bullets(s, [
-    ("If drift is a trajectory, it can in principle be predicted. That converts the problem:", False, 0),
-    ("\"Solving the concept drift problem is identical to solving the forecasting", True, 0),
-    ("problem of predicting theta_t.\"", True, 0),
-    ("The prescription follows directly - track the concept instead of detecting changes in it:", False, 0),
-    ("theta_t+1  <-  theta_t + lambda * grad E        no detector, no reset", True, 1),
-    ("with one condition: lambda must not decay to zero, or the model freezes into one concept.", False, 0),
-], top=4.85, size=15, gap=4)
-
-# =====================================================================
-# 15. Section 4
-# =====================================================================
-section("4.  Reproduction",
-        ["All six methods of Table 2 rebuilt in pure Python stdlib, on the paper's own data."])
-
-# =====================================================================
-# 16. Setup
-# =====================================================================
-s = slide("Setup")
+    ("A trajectory is in principle predictable, which restates the problem: solving concept", False, 0),
+    ("drift is equivalent to forecasting θ_{t}. The prescription follows —", False, 0),
+], top=4.7, size=17, gap=6)
+eq(s, "θ_{t+1}  ←  θ_{t} + λ ∇E", top=5.5, size=28)
 bullets(s, [
-    ("Data, from the source the paper cites (MOA):", True, 0),
-    ("Electricity 45,312 instances | CoverType 581,012 - both match the paper exactly", False, 1),
-    ("Methods, all six of Table 2, reimplemented rather than stood in for:", True, 0),
-    ("kNN | hinge SGD | Hoeffding Tree (Hoeffding-bound splits, Gaussian observers, NB leaves)", False, 1),
-    ("SAMkNN | PBF-SGD (degree-3 basis) | RF-HT (100 trees, random subspace, Poisson(6))", False, 1),
-    ("ADWIN2 validated separately: fires 55 instances after a true change, and gives zero", False, 1),
-    ("false alarms across 4,000 stationary instances", False, 1),
-    ("Streams at Table 1 parameters: T = 10K, tau_0 = 1K, tau_1 = 5K, tau_2 = 6K.", True, 0),
-    ("Prequential - test on each instance before training on it. Accuracy over tau_0..T.", False, 1),
-], top=1.9, size=15, gap=6)
+    ("— with no detector and no reset, subject to one condition: λ must not decay to zero.", False, 0),
+], top=6.35, size=17)
 
-# =====================================================================
-# 17. Table 3
-# =====================================================================
-s = slide("Results: Table 3 reproduced", "mine / paper")
+# 15. Section 4 ------------------------------------------------------------
+section("4.  Reproduction",
+        "All six methods of Table 2 rebuilt in the Python standard library.")
+
+# 16. Setup ----------------------------------------------------------------
+s = slide("Experimental setup")
+bullets(s, [
+    ("Data, obtained from the repository the paper cites:", True, 0),
+    ("Electricity, 45,312 instances; CoverType, 581,012 — both counts exact", False, 1),
+    ("Methods, all six of Table 2, reimplemented rather than substituted:", True, 0),
+    ("kNN · hinge-loss SGD · Hoeffding Tree with naive Bayes leaves", False, 1),
+    ("SAMkNN · PBF-SGD, degree-3 basis · RF-HT, 100 trees over ADWIN2", False, 1),
+    ("ADWIN2 validated independently: detection 55 instances after a true change,", False, 1),
+    ("and no false alarms across 4,000 stationary instances", False, 1),
+    ("Streams at Table 1 parameters: T = 10K, τ_{0} = 1K, τ_{1} = 5K, τ_{2} = 6K.", True, 0),
+    ("Prequential evaluation; accuracy recorded over τ_{0} … T.", False, 1),
+], top=1.6, size=17, gap=6)
+
+# 17. Results --------------------------------------------------------------
+s = slide("Results: Table 3", "reproduced / reported")
 table(s, [
     ["stream", "SAMkNN", "PBF-SGD", "RF-HT"],
-    ["Electricity  45,312", "78.0 / 79.8", "80.7 / 85.9", "84.5 / 86.2"],
-    ["RTG  10K", "71.1 / 78.8", "82.8 / 81.8", "72.5 / 77.9"],
-    ["Synthetic  10K", "81.1 / 96.0", "88.5 / 95.1", "86.7 / 93.6"],
-    ["CoverType  10K  (not comparable)", "91.2 / 93.3", "91.0 / 92.6", "90.5 / 93.9"],
-], left=M, top=1.95, width=W-2*M, height=2.5, col_w=[3.4,2,2,2], size=15)
+    ["Electricity, 45,312", "78.0 / 79.8", "80.7 / 85.9", "84.5 / 86.2"],
+    ["RTG, 10K", "71.1 / 78.8", "82.8 / 81.8", "72.5 / 77.9"],
+    ["Synthetic, 10K", "81.1 / 96.0", "88.5 / 95.1", "86.7 / 93.6"],
+    ["CoverType, 10K — not comparable", "91.2 / 93.3", "91.0 / 92.6", "90.5 / 93.9"],
+], left=M, top=1.85, width=W-2*M, height=2.7, col_w=[3.6,2,2,2], size=17)
 bullets(s, [
-    ("Electricity is the clean row - SAMkNN within 1.8 points, RF-HT within 1.7 at the full", False, 0),
-    ("100 trees. On RTG, PBF-SGD exceeds the paper and its reported ranking is preserved.", False, 0),
-    ("Two systematic misses, both traceable:", True, 0),
-    ("PBF-SGD on Electricity (-5.2) - the cause is the polynomial degree, not the step size", False, 1),
-    ("SAMkNN degrades in order (-1.8, -7.7, -14.9), tracking how much its long-term memory", False, 1),
-    ("should matter; the reimplementation compresses that memory more crudely", False, 1),
-], top=4.65, size=15, gap=4)
+    ("Electricity reproduces: SAMkNN within 1.8 points, RF-HT within 1.7 at 100 trees.", False, 0),
+    ("On RTG, PBF-SGD exceeds the reported value and the reported ranking is preserved.", False, 0),
+    ("Two systematic deviations, both attributable:", True, 0),
+    ("PBF-SGD on Electricity (−5.2), attributable to the polynomial degree, not to λ", False, 1),
+    ("SAMkNN deviates in order (−1.8, −7.7, −14.9), tracking the load on its long-term", False, 1),
+    ("memory, which the reimplementation compresses more crudely", False, 1),
+], top=4.75, size=17, gap=5)
 
-# =====================================================================
-# 18. lambda correction
-# =====================================================================
-s = slide("The lambda condition, and a correction", "accuracy points lost by letting lambda decay as 1/sqrt(t)")
+# 18. lambda ---------------------------------------------------------------
+s = slide("The condition on λ", "accuracy lost under the schedule λ_{t} = λ_{0} / √t")
 cd = CategoryChartData()
 cd.categories = ["stationary", "sudden", "incremental", "gradual", "sustained"]
 cd.add_series("Penalty", (0.9, 18.6, 5.2, 14.9, 0.8))
-gf = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(M), Inches(1.95),
-                        Inches(7.3), Inches(4.3), cd)
-style_chart(gf.chart, legend=False)
+style_chart(s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(M), Inches(1.95),
+                               Inches(7.2), Inches(4.4), cd).chart, legend=False)
 bullets(s, [
-    ("The paper warns that decay makes SGD", False, 0),
-    ("\"react more and more slowly to concept", False, 0),
-    ("drift\", and leaves it there.", False, 0),
-    ("Tested, it bites hardest after SUDDEN", True, 0),
-    ("drift and is nearly free under sustained.", True, 0),
-    ("Under sustained rotation a constant", False, 0),
-    ("lambda only reaches 88.1 anyway, so", False, 0),
-    ("decay destroys little. After a sudden", False, 0),
-    ("resample a live lambda relearns and a", False, 0),
-    ("frozen one cannot.", False, 0),
-    ("The condition is really about recovery", True, 0),
-    ("from discontinuities.", True, 0),
-], top=1.95, left=8.4, width=4.4, size=14, gap=2)
+    ("Read states that decay causes SGD to", False, 0),
+    ("react progressively more slowly, and", False, 0),
+    ("reports no experiment isolating it.", False, 0),
+    ("The penalty is largest after sudden", True, 0),
+    ("drift and negligible under sustained", True, 0),
+    ("drift.", True, 0),
+    ("Under sustained rotation a constant λ", False, 0),
+    ("attains only 88.1, so decay forfeits", False, 0),
+    ("little. After a resampled concept a", False, 0),
+    ("live λ relearns; a frozen one cannot.", False, 0),
+    ("The condition concerns", True, 0),
+    ("recovery from discontinuities.", True, 0),
+], top=1.95, left=8.3, width=4.5, size=15, gap=2)
 
-# =====================================================================
-# 19. kNN flatness
-# =====================================================================
-s = slide("Buffer methods: cap and flatness are one fact", "kNN and SGD across the drift types")
+# 19. kNN ------------------------------------------------------------------
+s = slide("Buffer methods", "capacity and insensitivity are the same property")
 cd = CategoryChartData()
 cd.categories = ["stationary", "sudden", "incremental", "gradual", "sustained"]
 cd.add_series("SGD", (97.3, 94.1, 96.1, 94.0, 88.1))
 cd.add_series("kNN", (73.3, 73.1, 73.2, 72.8, 72.7))
-gf = s.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Inches(M), Inches(1.95),
-                        Inches(7.3), Inches(4.3), cd)
-ch = gf.chart; style_chart(ch)
+ch = s.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Inches(M), Inches(1.95),
+                        Inches(7.2), Inches(4.4), cd).chart
+style_chart(ch)
 ch.value_axis.minimum_scale = 65; ch.value_axis.maximum_scale = 100
 bullets(s, [
-    ("kNN is worst in all five scenarios, and", True, 0),
-    ("flat across all five: a 0.6-point spread", True, 0),
-    ("against SGD's 9.2.", True, 0),
+    ("kNN is inferior in all five regimes", True, 0),
+    ("and invariant across them: a spread", True, 0),
+    ("of 0.6 points against SGD's 9.2.", True, 0),
     ("Drift costs a buffer almost nothing,", False, 0),
-    ("because a buffer never accumulated", False, 0),
-    ("anything for drift to take away.", False, 0),
-    ("The paper makes two separate remarks -", False, 0),
-    ("that buffer power is limited by size, and", False, 0),
-    ("that kNN shows no upward trend when", False, 0),
-    ("stationary. They are the same fact.", False, 0),
-], top=2.2, left=8.4, width=4.4, size=14, gap=3)
+    ("because a buffer accumulates nothing", False, 0),
+    ("for drift to invalidate.", False, 0),
+    ("Read records two separate", False, 0),
+    ("observations — that buffer capacity", False, 0),
+    ("bounds accuracy, and that kNN shows", False, 0),
+    ("no upward trend when stationary.", False, 0),
+    ("They are one property.", True, 0),
+], top=2.1, left=8.3, width=4.5, size=15, gap=2)
 
-# =====================================================================
-# 20. What the paper leaves unstated
-# =====================================================================
-s = slide("What the paper leaves unstated", "each of these changes its numbers more than any method does")
+# 20. Unstated -------------------------------------------------------------
+s = slide("Unstated parameters", "each alters the reported figures more than any method does")
 table(s, [
-    ["unstated", "measured effect"],
-    ["Synthetic input dimension", "SGD scores 57.7 / 74.5 / 83.1 / 92.2 at d = 2 / 5 / 10 / 20"],
-    ["PBF-SGD polynomial degree", "the specified degree 3 is 3.3 points WORSE than degree 2"],
-    ["Electricity attribute count", "the paper says 6; the data file declares 8"],
+    ["parameter", "measured effect"],
+    ["Synthetic input dimension", "SGD attains 57.7 / 74.5 / 83.1 / 92.2 at d = 2 / 5 / 10 / 20"],
+    ["PBF-SGD polynomial degree", "the specified degree 3 is 3.3 points below degree 2"],
+    ["Electricity attribute count", "stated as 6; the data file declares 8"],
     ["L2 strength for SGD", "unstated; scikit-multiflow default assumed"],
-], left=M, top=1.95, width=W-2*M, height=2.6, col_w=[3.6,8], size=15,
-   align=["l","l"])
+], left=M, top=1.85, width=W-2*M, height=2.7, col_w=[3.4,8], size=17, align=["l","l"])
 bullets(s, [
-    ("The dimension is the serious one. The reported Synthetic row is 93.6 - 96.0, which is", False, 0),
-    ("reachable only at the high end - and nowhere near the d = 2 that the paper's own", False, 0),
-    ("Figure 4 plots. Anyone citing that column should know it turns on a free parameter.", False, 0),
-    ("A related finding: on the Synthetic stream plain SGD (92.2) BEATS PBF-SGD (88.5).", True, 0),
-    ("The concept there is a hyperplane - linear by construction - so a degree-3 basis adds", False, 0),
-    ("1,770 parameters that can only contribute variance. Expansion is a bet on", False, 0),
-    ("non-linearity, and that stream is the case where the bet cannot pay.", False, 0),
-], top=4.75, size=14, gap=3)
+    ("The dimension is decisive. The reported Synthetic row, 93.6–96.0, is attainable only", False, 0),
+    ("at the upper end, and not at the d = 2 of the paper's Figure 4.", False, 0),
+    ("A related observation: on the Synthetic stream SGD attains 92.2 and PBF-SGD 88.5.", True, 0),
+    ("That concept is a hyperplane θ^{⊤}x = 0, linear by construction, so a degree-3 basis", False, 0),
+    ("contributes 1,770 parameters of variance and no expressive power.", False, 0),
+], top=4.75, size=17, gap=6)
 
-# =====================================================================
-# 21. Section 5
-# =====================================================================
-section("5.  Where the field went after 2018",
-        ["The paper's open problem - forecasting the concept - was eventually closed."])
+# 21. Section 5 ------------------------------------------------------------
+section("5.  Subsequent work",
+        "The forecasting problem Read posed was formulated and solved in 2025.")
 
-# =====================================================================
-# 22. Modern families
-# =====================================================================
+# 22. Families -------------------------------------------------------------
 s = slide("Four families of response")
 table(s, [
-    ["family", "idea", "representative work"],
-    ["Normalisation", "remove shifting marginals; leave the conditional alone",
-     "RevIN, Dish-TS, SAN"],
-    ["Online fast/slow", "balance fast adaptation against recall of old patterns",
-     "FSNet, OneNet (NeurIPS'23)"],
-    ["Concept pools", "keep one model per concept; select the nearest",
-     "CEP (2026), for recurring drift"],
-    ["Proactive", "predict the parameter shift BEFORE the error appears",
-     "Proceed (KDD'25)"],
-], left=M, top=1.6, width=W-2*M, height=3.0, col_w=[2.4,6.2,3.4], size=14,
+    ["family", "principle", "representative work"],
+    ["Normalisation", "remove shifting marginals; leave p(y | x) alone", "RevIN, Dish-TS, SAN"],
+    ["Online fast/slow", "balance adaptation against recall of prior patterns", "FSNet, OneNet"],
+    ["Concept pools", "retain one model per concept; select the nearest", "CEP, for recurrence"],
+    ["Proactive", "predict the parameter shift before error accrues", "Proceed, KDD'25"],
+], left=M, top=1.6, width=W-2*M, height=3.0, col_w=[2.4,6.2,3.4], size=17,
    align=["l","l","l"])
 bullets(s, [
-    ("Only the last of these does what Read argued for. Proceed estimates the drift between", False, 0),
-    ("recent training data and the current test sample, then uses a learned generator to", False, 0),
-    ("translate that estimate directly into parameter adjustments.", False, 0),
-    ("Read argued that solving drift means forecasting theta, and never built it.", True, 0),
-    ("Proceed builds exactly that map - seven years later, by the route he proposed.", True, 0),
-], top=4.8, size=15, gap=3)
+    ("Only the last realises Read's proposal. Proceed estimates the drift between recent", False, 0),
+    ("training data and the current test instance, then maps that estimate to a parameter", False, 0),
+    ("adjustment through a learned generator:", False, 0),
+], top=4.85, size=17, gap=6)
+eq(s, "Δθ  =  g_{φ}(Δĉ)", top=6.25, size=26)
 
-# =====================================================================
-# 23. Foundation models
-# =====================================================================
-s = slide("Drift under foundation models", "when the weights are not yours to adapt")
+# 23. Foundation models ----------------------------------------------------
+s = slide("Drift under foundation models", "when the parameters are not available for adaptation")
 bullets(s, [
-    ("Time-series foundation models - Chronos, Moirai and successors - are pretrained on", False, 0),
-    ("large corpora and used zero-shot. Drift does not go away; it moves.", False, 0),
+    ("Time-series foundation models — Chronos, Moirai and successors — are pretrained on", False, 0),
+    ("large corpora and applied zero-shot. Drift does not disappear; its locus moves.", False, 0),
     ("Black-box adaptation.", True, 0),
-    ("If the model is behind a commercial API, its weights cannot be touched. Recent work", False, 1),
-    ("adapts by learning the structure of the model's ERRORS in context instead.", False, 1),
+    ("Where the model is served behind an API, the weights cannot be modified; adaptation", False, 1),
+    ("proceeds by learning the structure of the model's errors in context.", False, 1),
     ("Drift-resilient priors.", True, 0),
-    ("The other route: bake drift into the in-context prior, so the model learns to estimate,", False, 1),
-    ("adapt to and extrapolate change (Drift-Resilient TabPFN, NeurIPS'24).", False, 1),
-    ("Both are continuous adaptation in the sense of section 2 - the parameters simply live", False, 0),
-    ("somewhere else, in the context or in a residual corrector rather than in the weights.", False, 0),
-], top=1.9, size=15, gap=5)
+    ("Alternatively, drift is incorporated into the in-context prior, so the model learns to", False, 1),
+    ("estimate, adapt to and extrapolate change — Drift-Resilient TabPFN, NeurIPS'24.", False, 1),
+    ("Both are continuous adaptation in the sense of §2; the parameters simply reside in", False, 0),
+    ("the context or in a residual corrector rather than in the weights.", False, 0),
+], top=1.85, size=17, gap=6)
 
-# =====================================================================
-# 24. Section 6
-# =====================================================================
+# 24. Section 6 ------------------------------------------------------------
 section("6.  Open problems",
-        ["What the literature has not settled, and what can be tested now."])
+        "What remains unresolved, and what the present harness can test.")
 
-# =====================================================================
-# 25. Open problems
-# =====================================================================
-s = slide("What is still unsettled")
+# 25. Open problems --------------------------------------------------------
+s = slide("Unresolved questions")
 bullets(s, [
-    ("No criterion separates real drift from unmodelled context.", True, 0),
-    ("CDS says the conditional only APPEARS to move because a covariate was never", False, 1),
-    ("conditioned on. Read says it genuinely moves through parameter space. If the", False, 1),
-    ("context is observable and periodic, tracking it is wasted work; if it is latent and", False, 1),
-    ("non-recurrent, conditioning is impossible. Nothing published says which you face.", False, 1),
-    ("Recurring and sustained drift split the method space, and are rarely benchmarked", True, 0),
-    ("together.", True, 0),
-    ("A pool assumes concepts come back; a tracker assumes smooth displacement. The", False, 1),
-    ("crossover between them has no published characterisation.", False, 1),
-    ("Evaluation remains synthetic and label-immediate,", True, 0),
-    ("while the deployments that motivate the field are neither.", True, 0),
-], top=1.55, size=15, gap=5)
+    ("No criterion distinguishes real drift from omitted context.", True, 0),
+    ("CDS holds that p(y | x) only appears to move because c was never conditioned on;", False, 1),
+    ("Read holds that θ genuinely traverses Θ. Where c is observable and periodic,", False, 1),
+    ("tracking is wasted; where it is latent, conditioning is impossible. No published", False, 1),
+    ("criterion identifies which regime obtains.", False, 1),
+    ("Recurrence and sustained drift partition the method space.", True, 0),
+    ("A pool presumes concepts return; a tracker presumes smooth displacement. The", False, 1),
+    ("crossover between the two has no published characterisation.", False, 1),
+    ("Evaluation remains synthetic and label-immediate, while the applications that", True, 0),
+    ("motivate the field are neither.", True, 0),
+], top=1.6, size=17, gap=6)
 
-# =====================================================================
-# 26. Proposed experiments
-# =====================================================================
-s = slide("Proposed experiments", "all four run on the harness as it stands")
+# 26. Proposed -------------------------------------------------------------
+s = slide("Proposed experiments", "each stated as a falsifiable prediction")
 table(s, [
-    ["", "question", "falsifiable prediction"],
-    ["A", "Why did momentum not help?",
-     "A rotation-aware extrapolator closes the tracking gap - and does\nnothing on sudden drift"],
-    ["B", "Real drift, or unmodelled context?",
-     "MI(residual; context) separates the two regimes; autocorrelation cannot"],
-    ["C", "When does tracking lose to storing?",
-     "A crossover period p* exists; below it a pool beats a tracker"],
-    ["D", "What should lambda actually be?",
-     "lambda* scales as the square root of the drift rate"],
-], left=M, top=1.95, width=W-2*M, height=3.2, col_w=[0.5,3.2,7.2], size=13,
+    ["", "question", "prediction"],
+    ["A", "Why does momentum not assist?",
+     "A rotation-aware extrapolator closes the tracking gap, and has\nno effect on sudden drift"],
+    ["B", "Real drift, or omitted context?",
+     "I(E_{t} ; c_{t}) separates the regimes; autocorrelation does not"],
+    ["C", "When does tracking lose to storage?",
+     "A crossover period p* exists, below which a pool dominates"],
+    ["D", "What value should λ take?",
+     "λ* scales as the square root of the drift rate"],
+], left=M, top=1.85, width=W-2*M, height=3.3, col_w=[0.4,3.4,7.4], size=16,
    align=["l","l","l"])
 bullets(s, [
-    ("B addresses the first open problem directly. Electricity carries a genuine observable", False, 0),
-    ("context - half-hour of day and day of week - and the synthetic streams expose the", False, 0),
-    ("ground-truth concept, so both regimes can be built and told apart on the same harness.", False, 0),
-], top=5.4, size=15, gap=3)
+    ("B addresses the first open problem. Electricity carries an observable periodic", False, 0),
+    ("context, and the synthetic streams expose the ground-truth concept, so both", False, 0),
+    ("regimes can be constructed and separated on one harness.", False, 0),
+], top=5.4, size=17, gap=6)
 
-# =====================================================================
-# 27. Summary
-# =====================================================================
+# 27. Summary --------------------------------------------------------------
 s = slide("Summary")
 bullets(s, [
-    ("Concept drift is a change in p(y | x) over time. It is distinct from covariate shift,", False, 0),
-    ("and most recent forecasting work addresses the latter.", False, 0),
-    ("The field's two responses are detection-and-reset and continuous adaptation. Which", False, 0),
-    ("is available is decided by what the model is made of - a tree has no delta-theta.", False, 0),
-    ("Read (2018) argues drift implies temporal dependence, so a drifting stream is a time", False, 0),
-    ("series and the concept should be tracked rather than detected.", False, 0),
-    ("Reproduced: two of three advanced methods land within 2 points on Electricity. The", False, 0),
-    ("lambda prescription holds but concerns recovery from discontinuities, not tracking.", False, 0),
-    ("The paper's forecasting proposal was built seven years later by Proceed (KDD'25).", False, 0),
-    ("The open question is telling genuine drift from context that was never modelled.", False, 0),
-], top=1.6, size=16, gap=11)
+    ("Concept drift is a change in p(y | x) with time, distinct from covariate shift; most", False, 0),
+    ("recent forecasting work addresses the latter.", False, 0),
+    ("Which adaptation mechanism is available follows from the model's representation:", False, 0),
+    ("a tree admits no Δθ.", False, 0),
+    ("Read (2018) argues drift implies temporal dependence, hence a drifting stream is a", False, 0),
+    ("time series and the concept should be tracked rather than detected.", False, 0),
+    ("Reproduced: two of three methods within 2 points on Electricity. The condition on λ", False, 0),
+    ("holds, but concerns recovery from discontinuities rather than tracking.", False, 0),
+    ("Proceed (KDD'25) realises the forecasting proposal seven years later.", False, 0),
+    ("The open question is separating genuine drift from context never modelled.", False, 0),
+], top=1.6, size=18, gap=11)
 
 prs.save("/tmp/claude-0/-root-time-series-research/350c80dd-3cf5-4b19-ac84-1e395d6dbfb5/scratchpad/deck/seminar.pptx")
 print("saved, %d slides" % len(prs.slides._sldIdLst))
