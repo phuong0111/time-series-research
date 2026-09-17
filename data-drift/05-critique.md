@@ -98,27 +98,44 @@ gap is conservative on that axis.
 
 ## What our reproduction adds
 
+Reproducing Table 2's methods on Table 3's data, prequentially, over $\tau_0 \ldots T$:
+
 | Finding | Status |
 |---|---|
-| Buffer methods limited, worst under sustained drift | **confirmed, strongly** |
-| Gradual drift is the hard case for all mechanisms | **confirmed** |
-| Decaying $\lambda$ is catastrophic under drift (+0.262) | **confirmed, quantified** |
-| Decaying $\lambda$ is marginally *better* when stationary (−0.004) | new nuance |
-| Momentum ("forecasting") helps | **not reproduced** — neutral |
-| Resetting is costly | **partly** — mostly it is *redundant* (see below) |
-| $\lambda$ is a responsiveness/variance dial with a real cost | new, quantified (B6) |
+| SAMkNN on Electricity (79.8) | **reproduced** — 78.0, −1.8 |
+| RF-HT on Electricity (86.2) | **reproduced** — 84.5, −1.7, at the full 100 trees |
+| PBF-SGD on Electricity (85.9) | **not reproduced** — 80.7, −5.2 |
+| PBF-SGD's specified degree 3 beats degree 2 | **contradicted** — degree 2 is 3.3 points better |
+| Decaying $\lambda$ is catastrophic under drift | **confirmed, with a correction** — see below |
+| A tree has no $\Delta\theta$ | **structural**, and now visible in the code |
 
-**The sharper reading of B4.** With the base model held fixed, resetting never helps —
-but the reason is not that it is expensive. It is that **resetting is redundant when
-the model can already move.** Detection earns its keep only for a model class with no
-$\Delta\theta$. That supports the paper's structural claim while undercutting its framing: the
-problem is not that detect-and-reset is costly, it is that detect-and-reset is a
-workaround for trees.
+**The $\lambda$ correction.** §5 warns against decaying $\lambda$ because the model would
+"react more and more slowly to concept drift". Tested on Table 1's streams with
+Table 2's SGD, the penalty is **+18.6 points after sudden drift and +0.8 under
+sustained drift** — the reverse of what the wording suggests. Under sustained rotation
+a constant $\lambda$ never tracks well either (88.1), so decay destroys little; after a
+sudden resample a live $\lambda$ relearns and a frozen one cannot. The warning is really
+about **recovery from discontinuities**, not about tracking continuous drift. Full
+tables and the $\lambda_0$ sensitivity check in [04-experiments.md](04-experiments.md) §B3.
 
-**B6 is the real gap in §5.** "Do not decay $\lambda$" is stated without quantification. Our
-sweep shows $\lambda$ trades stationary accuracy against drift responsiveness, and choosing it
-well requires knowing how much drift to expect — the very knowledge the no-detector
-argument claims you can do without.
+**"A tree has no $\Delta\theta$" is no longer an argument — it is a signature.** In
+[`code/methods.py`](code/methods.py), `theta_hat()` returns a vector for `HingeSGD` and
+`PBFSGD` and `None` for `KNN`, `SAMkNN`, `HoeffdingTree` and `AdaptiveRandomForest`.
+That is not an unimplemented method; there is no $\theta$ for a buffer or a structure to
+return. The paper's most durable claim needs no benchmark, and the type signature is
+the whole proof.
+
+**What the paper does not pin down matters more than any method here.** The synthetic
+stream's dimension is never stated, and it moves SGD from 57.7 to 92.2 (§B4). The
+paper's own Synthetic row is only reachable at the high end — not at the $d = 2$ its
+Figure 4 plots. Anyone citing Table 3's Synthetic column should know that.
+
+> **Removed claim.** Earlier revisions of these notes carried a reading that
+> "resetting is redundant, not costly", derived from a mechanism-isolating harness
+> that held the base model fixed across detect-reset and continuous learners. That
+> harness is no longer in the repo — everything now runs the paper's own methods, and
+> HT vs RF-HT confounds the detector with a 100× ensemble, so it cannot test the same
+> thing. The claim is withdrawn rather than left unsourced.
 
 ## Other things to know
 

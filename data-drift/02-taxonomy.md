@@ -4,7 +4,8 @@
 inherits Gama et al.'s — it is the **restatement of each type as a trajectory of $\theta$
 through concept space $\Theta$**, which is what makes the forecasting argument possible.
 
-All four are implemented in [`code/drift.py`](code/drift.py).
+All four are implemented in [`code/synthetic.py`](code/synthetic.py), at the
+parameters of the paper's own Table 1 ($\tau_0$ = 1K, $\tau_1$ = 5K, $\tau_2$ = 6K, T = 10K).
 
 ## The setup
 
@@ -41,7 +42,7 @@ $$\theta_t = \theta_{t-1} + \Delta_t\theta$$
 with $\Delta\theta = 0$ outside $\tau_1 \leq t \leq \tau_2$. **Intermediate states are real concepts** — $\theta$ passes
 through genuine points in $\Theta$.
 
-Read §6 realises this as a rotation, $\theta_t = A_{0.01}^{\top}\theta_{t-1}$ (`code/demo_theta.py`):
+Read §6 realises this as a rotation, $\theta_t = A_{0.01}^{\top}\theta_{t-1}$ (`python3 code/demos.py rotation`):
 
 | t | $\theta_t$ | ‖$\theta$‖ | angle | $\Delta_t\theta$ |
 |---|---|---|---|---|
@@ -78,9 +79,17 @@ That last column is why the paper **explicitly defers gradual drift**: its metho
 forecasts $\theta_t$, but under gradual drift $\theta_t$ is not the thing evolving. "A detailed
 treatment is left for future work."
 
-Our experiments confirm it is the hard case: gradual is the worst scenario for every
-mechanism (error 0.228–0.235 vs ~0.14 elsewhere) and gives the worst tracking gap
-(27.7° vs 5.8–12.9°). See [04-experiments.md](04-experiments.md).
+Our reproduction **does not** confirm that gradual is uniformly the hard case
+(`python3 code/figure5.py`, Table 1 parameters, $d = 20$, 5 seeds). It is the hardest
+case for a **tree** — HT scores 82.9 on gradual against 89.0 on incremental, because a
+tree cannot unlearn a concept it has already split on. But for **SGD** the hardest case
+is sustained drift (88.1 vs 94.0 gradual), and for **kNN** nothing is hard because
+nothing is easy: it sits at 72.7–73.8 regardless of drift type.
+
+What survives is the paper's actual reason for deferring gradual drift, which is
+structural rather than empirical: under gradual drift it is $\alpha_t$, not $\theta_t$, that forms
+the time series, so there is no trajectory to forecast. See
+[04-experiments.md](04-experiments.md).
 
 ## Re-occurring (§3.4)
 

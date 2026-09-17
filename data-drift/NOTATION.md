@@ -1,7 +1,7 @@
 # Notation
 
 Every symbol in Read (2018), with the formula that defines it. Column 4 gives the
-value used in the worked example (`code/demo_trace.py`).
+value used in the worked example (`python3 code/demos.py`).
 
 | Symbol | Meaning | Defining formula | Example value |
 |---|---|---|---|
@@ -55,9 +55,10 @@ never computes anything like $\theta$.
 The thesis in one line: **make $\hat{\theta}_t$ track $\theta_t$ instead of chasing it.**
 
 Note that $\hat{\theta}$ never needs to *equal* $\theta$. The boundary $\theta^{\top}x = 0$ is scale-invariant, so
-many $\hat{\theta}$ give identical predictions. At t = 2000 in `demo_theta.py`:
+many $\hat{\theta}$ give identical predictions. At t = 2000 on the sustained stream
+(`python3 code/demos.py scale`, $\lambda = 0.5$):
 
-$$\theta = [+0.0118,\; -0.7615] \qquad \hat\theta = [+1.0728,\; -5.9185]$$
+$$\theta = [-0.6153,\; -1.5624] \qquad \hat\theta = [-1.7736,\; -6.4090]$$
 
-$\hat{\theta}$ is ~8× larger, yet the two agree on **94.8%** of 10,000 random inputs — they are
-only 9.4° apart in direction. "Find $\theta$" is not even well-posed; only direction matters.
+$\hat{\theta}$ is ~4× larger, yet the two agree on **96.6%** of 10,000 random inputs — they are
+only 6.0° apart in direction. "Find $\theta$" is not even well-posed; only direction matters.

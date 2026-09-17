@@ -23,7 +23,7 @@ $$p(y_t \mid x_t, x_{t-1}) \;=\; p(y_t \mid x_t)\, p(x_t \mid x_{t-1})$$
 which is **not** the independence factorization $p(y_t \mid x_t, x_{t-1}) = p(y_t \mid x_t)$.
 The surviving $x_{t-1}$ term *is* temporal dependence. ∎
 
-Counted on the 20-step worked stream (`code/demo_trace.py`, $\tau = 10$):
+Counted on the 20-step worked stream (`python3 code/demos.py chain`, $\tau = 10$):
 
 $$P(C_t = 0) = \tfrac{9}{20} = 0.450 \qquad P(C_t = 0 \mid C_{t-1} = 1) = \tfrac{0}{10} = 0.000$$
 

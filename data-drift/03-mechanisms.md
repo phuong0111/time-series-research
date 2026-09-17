@@ -10,7 +10,14 @@ From §1.2. The cleanest way to see why these are treated as exhaustive is to as
 | 3. Continuous adaptation | **parameters** | move them | **yes** |
 
 The right-hand column is the paper's argument compressed to one word per row.
-All three are implemented in [`code/learners.py`](code/learners.py).
+All three are implemented in [`code/methods.py`](code/methods.py) — not as
+stand-ins, but as the paper's own Table 2 methods, one per mechanism:
+`KNN`/`SAMkNN` (forgetting), `HoeffdingTree`/`AdaptiveRandomForest` (detect
+and reset, via `ADWIN`), `HingeSGD`/`PBFSGD` (continuous).
+
+The division is visible in the code itself: `theta_hat()` returns a vector for
+the third group and `None` for the first two. That is not an unimplemented
+method — there is no $\theta$ for a buffer or a tree to return.
 
 ## First, the thing that is easy to miss
 
@@ -60,8 +67,11 @@ longer $t - \tau$ before recovery.
 **Failure mode, plus one striking observation.** §7 notes predictive power is capped
 by buffer size. Then Fig. 5a shows something easy to miss: under a **stationary**
 concept kNN shows **no upward trend** — unlike HT and SGD it does not improve with
-more data. *A buffer method cannot accumulate.* Our runs reproduce this: buffer-kNN
-is worst in every scenario, and worst of all under sustained drift (0.218 vs 0.152).
+more data. *A buffer method cannot accumulate.* Our runs reproduce this twice over
+(`python3 code/figure5.py`): kNN is **worst in all five scenarios**, and its score is
+**flat across every one of them** — 72.7 to 73.3, a spread of 0.6 points, against
+SGD's 88.1–97.3. Drift barely changes kNN's accuracy because kNN never built anything
+for drift to take away. The cap and the flatness are the same fact.
 
 And §4 gives the hard limit: automatic recovery is "not a solution when the drift is
 sustained over a long time or occurs regularly."
@@ -139,8 +149,12 @@ right, so discarding it destroys usable information.
 **The one condition.** Do not decay $\lambda$ toward zero. Batch practice decays it to
 converge on a fixed point, but a stream has no fixed point, and decay makes the model
 "react more and more slowly to concept drift until eventually becoming stuck in one
-concept." Our Table 3 quantifies this: decaying $\lambda$ costs **+0.262 error** under
-sustained drift while being marginally *better* (−0.004) when stationary.
+concept." [`code/lambda_condition.py`](code/lambda_condition.py) quantifies it — and
+corrects the intuition. Decay costs **+18.6 accuracy points after sudden drift** but
+only **+0.8 under sustained drift**. Under sustained rotation a constant $\lambda$ never
+tracks well either (88.1), so decay destroys little; after a sudden resample a live $\lambda$
+relearns and a frozen one cannot. The condition is really about **recovery from
+discontinuities**. See [04-experiments.md](04-experiments.md) §B3.
 
 **Why the field discarded it.** §7 is candid, and this is the most useful diagnostic
 in the paper:
