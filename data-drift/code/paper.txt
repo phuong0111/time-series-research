@@ -1,0 +1,847 @@
+                                                        Concept-drifting Data Streams are Time Series;
+                                                            The Case for Continuous Adaptation
+                                                                                          Jesse Read
+arXiv:1810.02266v1 [cs.LG] 4 Oct 2018
+
+
+
+
+                                        Abstract                                                 tificial intelligence, including robotics, reinforcement
+                                                                                                 learning, system monitoring, anomaly detection, so-
+                                        Learning from data streams is an increasingly im- cial network and media analysis.
+                                        portant topic in data mining, machine learning, and         In a data stream, we assume that data arrives
+                                        artificial intelligence in general. A major focus in the
+                                        data stream literature is on designing methods that                           (xt , yt ) ∼ pt (X , Y)
+                                        can deal with concept drift, a challenge where the
+                                                                                                 over time t = 1, . . . , ∞. A model observes test in-
+                                        generating distribution changes over time. A general
+                                                                                                 stance xt and is required to make a prediction
+                                        assumption in most of this literature is that instances
+                                        are independently distributed in the stream. In this                               ŷt = ht (xt )
+                                        work we show that, in the context of concept drift,
+                                        this assumption is contradictory, and that the pres- at time t. Hence the amount of computational time
+                                        ence of concept drift necessarily implies temporal de- spent per instance must be less that the rate of ar-
+                                        pendence; and thus some form of time series. This rival of new instances (i.e., the real clock time be-
+                                        has important implications on model design and de- tween time steps t − 1 and t). A usual assumption is
+                                        ployment. We explore and highlight the these impli- that true label yt−1 becomes available at time t, thus
+                                        cations, and show that Hoeffding-tree based ensem- allowing to update the model.
+                                        bles, which are very popular for learning in streams,       This is in contrast to a standard batch setting,
+                                        are not naturally suited to learning within drift; and where a dataset {xt , yt }N       t=1 of fixed N is observed
+                                        can perform in this scenario only at significant com- prior to inducing the model. See [11] for introduc-
+                                        putational cost of destructive adaptation. On the tion and definitions.
+                                        other hand, we develop and parameterize gradient-
+                                        descent methods and demonstrate how they can per- 1.1 Building Predictive Models from
+                                        form continuous adaptation with no explicit drift-
+                                                                                                          Data Streams
+                                        detection mechanism, offering major advantages in
+                                        terms of accuracy and efficiency. As a consequence We wish to build a model that approximates, either
+                                        of our theoretical discussion and empirical observa- directly or indirectly, the generating distribution. For
+                                        tions, we outline a number of recommendations for example, a MAP estimate for classification
+                                        deploying methods in concept-drifting streams.
+                                                                                                               ŷt = ht (xt ) = argmax p̃t (xt , y)
+                                                                                                                                 y
+
+                                        1    Introduction                                      The incremental nature of data streams has encour-
+                                                                                               aged a focus on fast and incremental, i.e., updateable,
+                                        Predictive modeling for data streams is becoming an models; both in the classification and regression con-
+                                        increasingly-relevant task, in particular with the in- texts. Incremental decision trees such as the Ho-
+                                        creasing advent of sensor networks and tasks in ar- effding tree (HT, [15]) have had a huge impact on
+
+
+                                                                                                1
+the data-streams literature and dominate recent out-                 Of course, adaptation can be increased by flushing
+put in this area. They are fast, incremental, easy to                the buffer when drift is detected.
+deploy, and offer powerful non-linear decision bound-                   HTs can efficiently and incrementally build up a
+aries. Dozens of modifications have been made, in-                   model over an immense number of instances without
+cluding ensembles [6, 18, 13, 12], and adaptive trees                needing to prune or purge from a batch. However,
+[4].                                                                 a permanent change in concept (generating distribu-
+   High performance in data streams has also been ob-                tion) will permanently invalidate the current tree (or
+tained by k-nearest neighbors (kNN) methods, e.g.,                   at least weaken the relevance of it – depending on
+[19, 26, 25]. As a lazy method, there is no training                 severity of drift) therefore dealing with drift becomes
+time requirement other than simply storing examples                  essential. The usual approach is to deploy a mecha-
+to which – as a distance-based approach – it compares                nism to detect the change, and reset a tree or part of
+current instances, in order to make a prediction. The                a tree when this happens, so that more relevant parts
+buffer of examples should be large enough to repre-                  may be grown on the new concept. Common detec-
+sent the current concept adequately, but not too large               tion mechanisms include ADWIN [3], CUMSUM [22],
+as to be prohibitively expensive to query.                           Page Hinkley [7], and various geometric moving av-
+   Methods employing stochastic gradient descent                     erage and statistical tests [10]. For example, the Ho-
+(SGD)1 have been surprisingly underutilized in this                  effding Adaptive Tree (HAT, [4]) uses an off-the-shelf
+area of the literature. Baseline linear approaches ob-               ADWIN detector at each node of a tree, and cuts a
+tained relatively poor results, but can be competitive               branch at a node where changes in registered. It is
+with appropriate non-linearities [20] and have been                  expected that the branch will be regrown on new data
+used within other methods, e.g., at the leaves of a                  and thus represent the new concept. Tree approaches
+tree [1]. In this work, we argue that the effectiveness              are almost universally employed in ensembles to mit-
+of SGD methods on data-stream learning has been                      igate potential fallout from mis-detections.
+underappreciated and in fact offer great potential for                  In this paper we argue strongly for the potential
+future work in streams.                                              importance of a third option – of continuous adapta-
+                                                                     tion, where knowledge (e.g., a set of parameters de-
+                                                                     termining a decision boundary) is transferred as best
+1.2     Dealing with Concept Drift
+                                                                     as possible to a newer/updated concept rather than
+Dealing with concept drift, where the generating dis-                discarded or reset as in currently the case with the
+tribution pt−1 6= pt in at least some part of the                    popular detect and reset approach. This possibility
+stream, is a major focus of the data-stream litera-                  can be enacted with SGD. SGD is intimately known
+ture, since it means that the model current ht has                   and widely used across swathes of the machine learn-
+become partially or fully invalid. Almost all papers                 ing literature, however, we note that it is markedly
+on the topic propose some way to tackle its implica-                 absent from the bulk of the data-stream methods,
+tions, e.g., [14, 28, 11, 6, 18, 16, 17]. A comprehensive            and often only compared to only as a baseline in ex-
+survey to concept drift in streams is given in [11].                 periments. In this paper we argue that it has been
+   The limited-sized buffer of kNN methods imply                     discarded prematurely and underappreciated. We
+a natural forgetting mechanism where old examples                    analyse and parameterize it specifically in reflection
+are purged, as dictated by available computational                   to performance in concept-drifting data-streams, and
+(memory and CPU) resources. Any impact by con-                       show it to be very competitive with other approaches
+cept drift is inherently temporary in these contexts.                in the literature (results in Section 7).
+                                                                        To summarize the main mechanisms to deal with
+   1 i.e., incremental gradient descent; SGD usually implies
+                                                                     concept drift:
+drawing randomly from a dataset in i.i.d. fashion. Typically
+a stream is assumed to be i.i.d., and thus equivalent in that
+sense. We challenge the i.i.d. assumption later, but keep this        1. Forgetting mechanism
+terminology to be in line with that of the related literature            (e.g., kNN, and batch-incremental ensembles)
+
+
+                                                                 2
+ 2. Detect and reset mechanisms
+    (e.g., HATs and HT-ensembles with ADWIN)                           xt−1    xt     xt+1         yt−1       yt    yt+1
+
+ 3. Continuous adaptation
+    (e.g., SGD-based models incl. neural networks)                     yt−1           yt+1        xt−1        xt     xt
+                                                                               yt
+
+                                                                               (a)                            (b)
+1.3    Organization and contributions
+In spite of the enormous popularity of ensembled               Figure 1: The ‘standard’ discriminative (a) and gen-
+trees and distance-based (kNN) approaches, we will             erative (b) models for prediction in data streams; as
+show that continuous adaptation can be more suited             directed probabilistic graphical models.
+to concept-drifting data streams. We do this by
+breaking with a common assumption.
+                                                                   (displayed and discussed in Section 7) we outline
+   Namely, existing work in data streams is mostly
+                                                                   the implications and make a number of recom-
+based on the assumption of i.i.d. data within a par-
+                                                                   mendations before making concluding remarks
+ticular concept; therefore seeking as an objective to
+                                                                   (Section 8).
+detect a change in concept, so that off-the-shelf i.i.d.
+models can be (re)-deployed. A model belonging to
+a previous concept is seen as invalid. This leads to           2    Concept-drifting Streams are
+the detect-and-reset approach to dealing with con-
+cept drift mentioned above. In this work, on the con-               Time Series
+trary, we show that drift inherently implies temporal
+                                                               Concept-drifting data streams have been widely
+dependence; that all concept-drifting streams are in
+                                                               treated under the assumption of independent samples
+some way a time series, and can be treated as such.
+                                                               (see, e.g., [10, 6, 11, 27] and references therein). In
+We propose to treat the concept as a temporal se-
+                                                               this section, we argue that if a data stream involves
+quence, to enable continuous adaptation as an effec-
+                                                               concept drift, then the independence assumption is
+tive alternative to detect-and-reset approaches. For
+                                                               violated.
+this purpose we derive gradient descent approaches;
+                                                                 If data points are drawn independently, we should
+and we show scenarios where they compare very fa-
+                                                               be able to write
+vorably in comparison with more popular tree and
+distance-based methods. The contributions of this                       pt (yt , xt , xt−1 ) = pt (yt |xt )pt (xt−1 )      (1)
+work can be summarized as follows:                                       pt (yt |xt , xt−1 ) = pt (yt |xt )
+  • We show that concept-drifting data streams can see Figure 1a for illustration, where the lack of an
+    be considered as time series problems (Section edge between time-steps indicates the independence.
+    2)                                                  The subscript of pt reminds us of the possibility of
+                                                      concept drift (in which case, pt 6= pt−1 ).
+  • Following a fresh analysis on concept drift (Sec-
+    tion 3), we conduct a bias-variance analysis of Lemma 1. A data stream that exhibits a concept
+    learning under drift, and derive gradient descent drift also exhibits temporal dependence.
+    approaches for concept-drifting data streams in
+    the framework of continuous adaptation (Section Proof. Let pt (yt |xt ) = p(yt |xt , Ct ) where Ct ∈ {0, 1}
+    4)                                                denotes the concept at time-step t, and let the drift
+                                                      occur at point 0 < τ < ∞. Thus Ct = 0 for t < τ ,
+  • We give an analytical and empirical investiga- and C = 1 for t ≥ τ . Under independence,
+                                                             t
+    tion (Section 6) which highlights properties of
+    our suggested approach; and from the results                        P (Ct ) = P (Ct |Ct−1 )
+
+
+                                                           3
+ ct−1         ct        ct+1                              We have done this analysis in the most extreme
+                                                       case of a switch in concepts over a single time step (a
+                                                       sudden change in concept). One might argue that
+  xt−1      xt      xt+1       xt−1     xt      xt+1   as t → ∞, the importance of the dependence re-
+                                                       sulting from this one-time drift becomes negligible,
+                                                       since after drift, P (Ct = 1) = P (Ct−1 ) = 1 and
+  yt−1       yt     yt+1       yt−1      yt     yt+1   could  thus be considered a constant essentially ren-
+                                                       dering independence within each concept. However
+            (a)                         (b)            we do not observe τ ; we cannot know exactly when
+                                                       the drift will occur or if it has ocurred. As a result,
+Figure 2: A discriminative model (a) for prediction in an instantaneous drift between two time steps can
+data streams with concept drift (dashed lines simply manifest itself as temporal dependence in the error
+indicate that these connections are not usually ex- signal over many instances. It is surprising that this
+plicitly addressed). When drift is taken into account is not explicit across the literature, since it is indeed
+and marginalized out (b), inputs become connected. implicit in most change-detection algorithms, in the
+                                                       sense that they measure the change in the error signal
+                                                       of predictive models.
+However, it is obvious that
+                                                          The relationship between the predictive model and
+          P (Ct = 0) 6= P (Ct = 0|Ct−1 = 1),           the error is clearly seen in the relation
+
+namely, after the drift we no longer expect instances                                             Et = E(ht (xt ), yt )
+from the first concept.                                                       where E is the error function (e.g., mean-squared
+   We can use the joint distribution, Eq. (1), to check                       or classification error, depending on the problem).
+for independence, for any particular time step t,                             Clearly if ht is poorly adapted to deal with a con-
+marginalizing out C which is not observed:                                    cept drift, this will appear in increasing Et (i.e., a
+                                                                              time series). It is illustrated (for incremental drift2 )
+p(yt |xt , xt−1 ) ∝ p(yt , xt , xt−1 )                                        in Figure 3. Rather than monitoring {Et } for drift
+                     X                                                        so as to reset ht , in this paper, we look at adapting
+                  =         p(yt , xt , ct , ct−1 , xt−1 )                    ht directly.
+                     ct ,ct−1                                                    Having argued that concept drifting streams are
+                                  t
+                                  X X                                         time series – should we just apply off-the-shelf time
+                   = p(yt |xt )                  p(xj |cj )p(cj |cj−1 )       series models? Expanding on some differences men-
+                                  j=1 cj ,cj−1                                tioned in [27], we can point out that
+                                  |                  {z              }
+                                                 p(xt |xt−1 )                  1. Only data streams exhibiting concept drift are
+                   = p(yt |xt )p(xt |xt−1 )                        (2)            guaranteed to have time series elements, and
+                                                                                  only in consideration specifically of these parts
+which does not equal Eq. (1), thereby indicating tem-                             of the stream
+poral dependence (via the presence of t − 1).
+                                                                               2. Time dependence in data streams it is seen as a
+   This can be visualized as a probabilistic graphical                            problem (something to deal with), rather than
+model in Figure 2a (observed variables are shaded);                               as part of the solution (something to explicitly
+and in Figure 2b with concept drift marginalized out.                             model)
+   We have shown above that data streams with con-
+cept drift exhibit temporal dependence, which essen-                           3. In data streams the final estimation of
+tially means that all such streams can be seen as a                               each ŷt is required at time t, and thus
+time series.                                                                    2 We will review this type of drift in Section 3
+
+
+
+
+                                                                          4
+     retrospective/forward-backward (smoothing) in-
+     ference (as is typical in state-space models) is              4
+                                                                                           1.5
+                                                                                                                              0.14
+                                                                                                                              0.12
+
+     not applicable                                                2
+
+
+                                                                   0
+                                                                                           1.0
+                                                                                                                              0.10
+                                                                                                                              0.08
+                                                                                           0.5                                0.06
+                                                                   2                                                          0.04
+
+  4. A common assumption in data streams is that                   4
+                                                                                           0.0
+
+
+                                                                                           0.5
+                                                                                                                              0.02
+                                                                                                                              0.00
+                                                                       4   2   0   2   4         0   2   4       6   8   10          0   2   4       6   8
+
+     the ground truth is available at time t − 1, pro-                                                       t                                   t
+
+
+
+
+     viding a stream of training examples (xt−1 , yt−1 )               (a)                    (b)                  (c)
+     whereas time series models are typically built of-
+                                                         Figure 3: Concept drift (incremental drift): deci-
+     fline before being deployed live
+                                                         sion boundary on yt = σ(θt> xt ) shown for t =
+  5. Data streams are assumed to be of infinite length τ, τ + 1, . . . , τ + 10 (a); corresponding value of
+     (therefore, also training data, on account of item the coefficients over these time-steps (b) – form-
+     4)                                                  ing a time series with obvious temporal dependence:
+                                                         θτ , . . . , θτ +10 ; and the error rate over time – also a
+Some of these assumptions are broken on a paper- clear time series (c).
+by-paper level. For example, changes to point 4 have
+been addressed in, e.g., [12, 14].                                          4
+   The most closely related time series task to predic- or tendency and are more widespread in practice. A
+tion3 in streams is that known as filtering. Actually,   complete         change    in concept simply means we have
+Eq. (2) is a starting point for state space models such  changed         problem     domains. The idea of a move-
+as hidden Markov models, Kalman and paricle filters      ment       inherently     includes   the implication of depen-
+(see [2] for a thorough review) for which filtering is   dence      (e.g.,  across   time and   space) – and dependence
+a main task, although these models are not usually       (among         instances)    implies  naturally   a time series –
+expected to be updated at each timestep as in the        as  we     have    elaborated   in  the   previous section.
+streaming case (a possibility due to point 4 above).        Let      us   review   and  revise   concept   drift, based on
+   Although we cannot always apply state-space mod-      the    types      of drift  identified   in [11], which  relist for
+els directly to data streams, we nevertheless re-        convenience:
+mark again that temporal dependence plays a non-           1. Sudden/abrupt
+negligible role, and can be leveraged as an advan-
+tage. In particular, in reflection of this section, we     2. Incremental
+next make a revision of concept drift – in Section 3 –     3. Gradual
+which then allows us to employ efficient and effective
+methods (Section 4), allowing us to draw conclusions additionally noting the possibility of reoccurring drift
+that have important repercussions in data streams which may involve any of these types and, noting also
+mining.                                                  the related task of dealing with outliers, which are not
+                                                         concept drift.
+                                                            In the following, we denote θt ∈ Θ as the true
+3 Types of Concept Drift: A                              (unknown)          parameters defining the current concept
+                                                         at time t, i.e., pθt . This allows for a smooth drift
+       Fresh Analysis                                    across concept space Θ (for example, a set of coeffi-
+                                                         cients defining a hyperplane; see Figure 3) but also
+Sudden, complete, and immediate drift is widely allows for a qualitative view of categorical concepts
+considered in the literature (and for this reason we C ∈ {1, . . . , K}; such that θc represents the parame-
+                                                           t
+worked with it in the previous section), yet we could ters of the c-th concept; i.e., we would speak of drift
+also argue that gradual, or incremental drift fit bet- between concepts θ1 and θ2 .
+ter a dictionary definition which implies a movement
+                                                                   4 Cambridge dictionary offers, among others: “a slow move-
+  3 Of the current time step                                     ment”
+
+
+                                                             5
+3.1    Abrupt change                                             3.4   Re-occurring drift
+If the concept changes abruptly, in either a partial orRe-occurring drift may be any of the above cases
+complete manner, we may denote                         (sudden, gradual, or incremental) where a concept
+                       (                               may repeat at different parts of the stream. It is
+                         θ c1 t < τ                    very much related to the idea of state-space mod-
+                  θt =                              (3)
+                         θ c2 t ≥ τ                    els such as hidden Markov models, and switching
+                                                       models (both are reviewed in [2]). We remark that
+for some time index τ where the ‘drift’5 occurs. The there is no technical difference between modelling
+drift may be total (θ1 and θ2 are drawn independently states, and tracking concepts. Usually we can dis-
+from Θ) or partial (only a local change, to some part6 tinguish a state as something that we want to model
+of θ.                                                  (e.g., a weather system), and a concept drift as some-
+                                                       thing we wish to adapt to or take into account (e.g.,
+3.2 Incremental drift                                  change/degradation of in the monitoring sensors, or
+                                                       climate change).
+Incremental drift denotes a change over time. It can
+be denoted as an additive operation, where the cur-
+rent concept can be written as                         4 Learning under Drift: Theo-
+                    θt = θt−1 + ∆t θ                   (4)             retical Insights
+i.e., an increment of ∆t θ. We generally assume that         In this section we investigate an approach to adapt
+drift is active in range τ1 ≤ t ≤ τ2 (and that ∆θ = 0        to drift continuously as part of the learning process,
+outside of this range); where concept c1 before, c2          rather than reactively (i.e., the detect-and-reset ap-
+after, and a blended mixture inbetween).                     proach) using explicit drift detection mechanisms, as
+                                                             has previously been the main approach (see Section
+3.3 Gradual drift                                            1).
+                                                                It is well known that prediction error of super-
+In gradual drift, drift also occurs over time, but in a
+                                                             vised learners breaks down into variance, bias, and
+stochastic way. We may write
+                                                             irreducible error (see, e.g., [2, 9]). Let f : X →
+               θt = θct where ct ∼ B(αt )               (5) R represent the true underlying (unknown) model
+                                                             parametrized by θc , which produces observations
+where ct = 1 with probability αt , and ct = 2 other- y = f (x ; θ ) +  , where  ∼ N (0, σ 2 ). The ex-
+                                                              t         t c      t           t
+wise; B being a Bernoulli distribution. Note that αt pected mean squared error (MSE) over the data, with
+is itself is an incremental drift (see Eq. (4)) between some estimated model h, can be expressed as
+values 0 and 1. The stream thus increasingly-often
+generates examples from the new concept c2 ; where                Ext [MSE(h, y|xt )] = Ext Eyt ,t [(yt − h)2 |xt ]
+drift αt<τ1 = 0 and αt>τ2 = 1 outside of the drift                                    = σ 2 + V[h] + E[f − h]2       (6)
+range τ1 , . . . , τ2 .
+                                                                                                            2
+   Note that neither incremental nor gradual drift i.e., irreducible noise, variance, and bias terms, re-
+need be smooth or monotonically increasing, al- spectively.
+though that is a common simplification. A sigmoid               The result in Eq. (6) hinges on the assumption that
+function is often used in the literature; as in many of E[y] = E[f + ] = f due to the fact that E[t ] = 0.
+the stream generators of the MOA framework [5].                 However, recall that in the case of concept drifting
+   5 As noted above, we would prefer the term shift for this
+                                                             data  streams, f is not constant, but inherits random-
+particular case. Nevertheless, we inherent this terminology
+                                                             ness  from  random variable Ct (see Sections 2 and 3).
+from the literature for the sake of consistency              We can get around this problem by taking the expec-
+   6 Recalling that θ is likely to be multi-dimensional      tation of MSE within each concept; wrt the point of
+
+
+                                                             6
+a single change (which we denote τ ), then for time                 lar in the literature) will automatically establish ‘nor-
+t ≥ τ ),                                                            mal’ bias as (t − τ ) becomes as large as the maximum
+                                                                    number of instances stored in memory. However, this
+         yt = [ft<τ + ∆(ft<τ , ft≥τ )](xt ) + t                    can be a long time if that size is large; and not a so-
+              |        {z            }
+                          ft≥τ                                      lution when the drift is sustained over a long time or
+                                                                    occurs regularly.
+where ∆(ft<τ , ft≥τ ) represents the change in con-                    Finally, we remark again that detectors will fire
+cept. Regarding Eq. (6): At t = τ the third term                    when the error signal has already shown a significant
+(bias) is now essentially the difference between the                change, by which time many (possibly very biased)
+current true concept, and an estimated old concept.                 predictions may have been made.
+In other words (in terms of parameters),                               In the following section we discuss how to avoid this
+                                                                    trade-off. Namely, we propose strategies of continu-
+                         (θt − θ̂t )2                    (7)        ous adaptation which do not detect drift, but track
+                                                                    drift through time.
+and clearly the obvious goal (in terms of reducing
+bias), is moving θ̂t (an estimate of the previous con-
+cept) towards θ2 (the true current concept), and over               5     Continuous Adaptation un-
+a concept drifting stream of multiple drifts of differ-
+ent types: to model the journey of θ.
+                                                                          der Concept Drift
+   In the data streams literature, ensemble models                  Drift detection methods usually monitor the error sig-
+with drift-detection strategies have blossomed (see,                nal retrospectively for change (is t statistically dif-
+[13, 18] for surveys). We can now describe theo-                    ferent from t−1 , t−2 , . . .; a warning can be raised).
+retical insights to this popularity in this particular              However, since – as argued above – concept drift can
+area7 : By resetting a model when drift is detected, it             be seen as a time series we can attempt to forecast
+is possible to reduce the bias implied by the drift in              and track the drift, and adapt continuously.
+those models. However, this may increase the vari-                     In this sense, solving the concept drift problem is
+ance component of the error (since variance can be                  identical to solving the forecasting problem of pre-
+higher on smaller datasets [8]). Ensembles are pre-                 dicting θt which defines the true unknown concept
+cisely renown for reducing the variance component of                (see Eq. (7)). Using all the stream we have seen up
+the error (see., e.g., [9] and references therein) and              to timestep t, we could write
+thus desirable to counteract it.
+   This analysis also leads us once more to the down-                           θ̂t = g(x1 , . . . , xt , y1 , . . . , yt−1 )
+side of this approach: Under long and intensive drift,
+a vicious circle develops; increased efforts to detect              which at first glance appears unusable because it is
+drift lead to more frequent detections and thus fre-                a function over an increasingly large window of data.
+quent resetting of models (implicitly, to reduce bias),             However, using a recursion on θ̂t−1 , for minimizing
+which encourages the deployment of ever-larger en-                  least mean squares, there is a closed-form solution:
+sembles (to reduce the variance caused precisely by                 recursive least squares (RLS), which uses recursion
+resetting models). As seen in the literature, ensem-                to approximate
+ble sizes continue to grow; and our experiment sec-
+                                                                               θ̂t = θ̂t−1 + R−1          >
+                                                                                              t xt (yt − xt θ̂t−1 )
+tion confirm that such implementations can require
+significant computational time.                                     where      R−1t     =       R−1
+                                                                                                  t−1  − R−1 t−1 xt (1 +
+   Methods with an explicit forgetting mechanism                      > −1       −1 > −1
+                                                                    xt Rt−1 xt ) xt Rt−1 .
+(e.g., kNN, batch-incremental methods – also popu-                     RLS is a well known adaptive filter, which can be
+   7 Aside from the popularity and effectiveness of ensembles       easily extended to forgetting-RLS and Kalman filters
+in supervised learning in general                                   (see, e.g., [9]).
+
+                                                                7
+  Noting that xt (yt − x>
+                        t θ̂t−1 ) = ∇Eθ̂t and replacing  this argument can be clearly accepted only under the
+  −1                                                     condition of a complete change in concept; where the
+Rt with learning rate λ we derive stochastic gradi-
+ent descent (SGD), as follows.                           two tasks are not at all related; a scenario unlikely
+  For t = 1, . . . , ∞:                                  to be the case in practice. If the drift is partial (i.e.,
+                                                         the two concepts are partially related), then we wish
+                ŷt = h(xt ; θ̂t )                       to transfer part of the old concept (i.e., not discard
+                                                         it when drift is detected). We note that SGD, in this
+              ∆θ̂t = λ∇Eθ̂t (ŷt , yt )
+                                                         sense, performs a kind of transfer learning; namely
+             θ̂t+1 ← θ̂t + λ∇Eθ̂ = θ̂t + ∆θ̂t            continuous transfer learning. The literature on trans-
+                                                         fer learning (see, e.g., [23]) indicates that we are thus
+where the last line is essentially forecasting the con- likely to learn the new concept much faster.
+cept for the following timestep (note the connection
+to, e.g., Eq. (4)). Note the data-stream assumption
+that at time-point t + 1 we have already observed the 6         Experiments
+true value yt .
+   This may be viewed as a trivial result, but it has We carried out a series of experiments to enrich the
+important implications regarding much of the data- discussion and support the arguments made in this
+stream research and practice, which traditionally re- work. All methods are implemented in Python and
+lies predominantly on ensembles of decision trees or evaluated in the Scikit-MultiFlow framework [21]
+k-nearest neighbor-based methods; see Section 1.1. under prequential evaluation (testing then training
+We have argued that it has been underappreciated. with each instance). Experiments are carried out on
+Unlike Hoeffding tree methods, a gradient-descent a desktop machine, 2.60GHz, 16GB RAM.
+based approach can learn from a concept-drifting            First, we generated synthetic data using a weight
+stream without explicit concept drift detection. Un- matrix θ ∼ N (0, I) to represent the c-th concept.
+                                                                   c
+like kNN, time complexity is much more favourable. We introduced drift using the equations Eq. (3),
+   We remark that for SGD to perform robustly over Eq. (4), Eq. (5), under parameters in Table 1. For
+the length of a stream, we have to ensure certain con- incremental drift,
+ditions. In particular, to not decay the learning rate λ
+towards zero over time. In batch scenarios wish wish                   θ t = A>
+                                                                              0.01 θt−1 = θt−1 + ∆t θ
+to converge to a fixed point and such learning rate
+scheduling is common and effective practice. How- where A0.01 is a rotational matrix (of angle 0.01 in
+ever, under as stream this would cause SGD to react radians); for gradual drift,
+more and more slowly to concept drift until eventu-
+ally becoming stuck in one concept.                                                         1
+   An illustration of how SGD performs in a constant-                αt = p(ct = 1) =            (t − τ1 ).
+                                                                                         τ2 − τ1
+drift setting is given in Figure 4 on a synthetic data
+stream (which is detailed later in Section 6). We and, for sudden drift a new θt ∼ Θ is simply re-
+clearly see how no drift detection or model reset is sampled after timestep τ1 .
+necessary, and a concept can be smoothly tracked in         We additionally look at two common benchmark
+its drift through concept space.                         datasets from the data-streams literature involv-
+   Recall that under gradual drift, it is the αt (see ing real-world data: the Electricity and CoverType
+Eq. (5)) rather than θt which forms a time series. A datasets. Electricity contains 45,312 instances, with
+detailed treatment is left for future work.              has 6 attributes describing an electricity market (the
+   Since abrupt drift cannot necessarily be forecast in goal is to predict the demand). CoverType contains
+advanced, one might argue that traditional drift de- 581,012 instances of 54 attributes, as input to predict
+tectors are best suited to this case. We remark that one of seven classes representing forest cover type.
+
+
+                                                          8
+                      (a)                                  (b)                                    (c)
+
+Figure 4: Data points from a stream exhibiting concept drift (a); where the true concept is represented as
+a decision boundary θ> x = 0 (shown in green) which is rotating clockwise; and estimates θ̂t (in blue and
+yellow) are following it. Both are SGD methods with learning rate λ = 0.5, and the blue has an additional
+momentum term β = 0.5. We see the path through weight/concept space (b), i.e., the concept drift. Rather
+than a reactive approach monitoring the error rate retrospectively, θ̂t+1 ≈ θt+1 can be tracked and pre-
+empted. Drift is constant across this time window, yet error rate t |t = 1, 2, . . . recedes (c) as θ̂ converges
+on the true moving concept. We emphasise that predictive performance improves during the drift.
+
+
+Table 1: Parameters for synthetic data, except: τ2 =
+τ1 + 1 in the case of sudden drift, and clearly τ1 , τ2
+are not used at all if no drift. In all experiments,
+accuracy is recorded over instances τ0 , . . . , T .
+                                                                   Table 2: Methods and their parameterization, both
+     Sym.    t          Description                                for a ‘standard’ implementation (Vanilla Configu-
+     τ0      T /10      pre-training ends                          ration) and high-performance (Advanced Configura-
+     τ1      5K         start of drift                             tion). Values for any parameters not shown can be
+     τ2      6K         end of drift (gradual, incr.)              found as the default parameters in ScikitMulti-
+     τ2      τ1 + 1     end of drift (sudden)                      flow (v0.1.0 used here).
+     T       10K        length of stream
+                                                                    kNN         k = 10, buffer size 100
+                                                                    SGD         L2 regularization; λ = 0.01, hinge
+See, e.g., [10, 24, 4, 12] for details8 .                                       loss
+   We employed the three main approaches discussed                  HT          10−7 split confidence, 0.05 tie thresh-
+in this work (listed in Table 2); both a vanilla configu-                       old, naive Bayes at leaves
+ration (‘stardard’ kNN, SGD, HT) and an ‘advanced’                  SAMkNN      Self-adjusting memory kNN [19]
+configuration of the same methodologies. For HT and                 PBF-SGD     SGD with deg. 3 polynomial basis ex-
+kNN we used state-of-the-art adaptations. For SGD,                              pansion, e.g., [9]
+we simply employed basis expansion to accommodate                   RF-HT       Adaptive Random Forest [12]: an en-
+non-linear decision boundaries.                                                 semble of 100 HTs, ADWIN drift de-
+   First we had a look at performance on the synthetic                          tection, λ = 6, nmin = 50
+data (Figure 5), then on real world data (Figure 7),
+and finally, on an especially challenging scenario (Fig-
+   8 The data is available at https://moa.cms.waikato.ac.nz/
+
+datasets/
+
+
+                                                               9
+ure 6) over a sustained incremental drift. Table 3 This mechanism allows it to recover quickly from
+summarizes the predictive performance and Table 5 drift (Figure 5b–Figure 5d). Nevertheless predictive
+provides some running time results.                 power is always limited in proportion to the num-
+                                                    ber of instances stored in this buffer and, as observ-
+                                                    able in Figure (a), sometimes this is insufficient (we
+7 Discussion                                        note there is no upward trend here, as opposed to
+                                                    the other methods, despite more instances from the
+We present and discuss results from the experiments same concept). If buffer size is widened, performance
+outlined in the previous section.                   can be higher, but adaptation to drift will take cor-
+                                                    respondingly longer or require explicit drift detection
+Hoeffding Trees are fast but conservative           methods as with HT approaches.
+We observe how HTs grow conservatively (Figure 5a).
+This behaviour is intended by design, since they have     SGD for Efficient Continuous Adaptation
+no natural forgetting mechanism and thus it is impor-
+                                                          SGD is a simple method which has been around a
+tant to make a statistically safe split (based on the
+                                                          long time. With a non-decayed learning rate, we
+Hoeffding bound).
+                                                          find that it behaves as well as we hypothesized on
+   Indeed, note after t = 7000 accuracy jumps 10 per-
+                                                          synthetic data: it continues to learn a static concept
+centage points; indicating the initial split.
+                                                          better over time (in Figure 5a it recovers quickly from
+   This conservative approach provides strong confi-
+                                                          sudden and gradual drift, and its performance is al-
+dence that we may produce tree equivalent to one
+                                                          most unaffected under incremental drift where (as we
+built from a batch, but only within a single concept.
+                                                          see in Figure 5c) it is able to adapt continuously.
+It necessarily means that Hoeffding trees will struggle
+                                                             We suspect that SGD has not been widely consid-
+when the true target concept θt is a moving target
+                                                          ered in state-of-the-art data-stream evaluations be-
+rather than a fixed point in concept space.
+                                                          cause it performs poorly on real-world and complex
+   And we observe this: Figures 5b—5d show how
+                                                          data when deployed in an off-the-shelf manner, es-
+the performance of a standalone HT is damaged by
+                                                          pecially if the learning rate is decayed – as is often
+concept drift (as opposed to SGD- and kNN-based
+                                                          the standard. However, we put together the PBF-
+methods which are able to recover more quickly.
+                                                          SGD method from elementary components and find
+                                                          that it performs strongly in these scenarios (Figure 6,
+Destructive adaptation is costly                          Figure 7).
+In the literature sophisticated concept-drift detectors      We do see that performance of the advanced/state-
+and ensembles are used to counteract this disadvan-       of-the-art methods (HT and k-NN based) is also com-
+tage, and provide robust prediction in dynamic data       petitive, as expected, yet it is crucial to emphasise
+streams. And we confirm that this approach is effec-      the difference in computational performance (see Ta-
+tive in many cases (as seen in Figure 7) but at a sig-    ble 5): running time is up to an order of magnitude
+nificant cost: the computational time (see Table 5)       or more higher for the decision tree ensemble, com-
+of the detect-and-reset approach clearly enunciates       pared to other methods; even greater than PBF-SGD,
+the overhead of destroying (resetting) and regrowing      which has a feature space cubicly greater than the
+HTs constantly, so as to adapt to a changing concept.     original.
+
+Buffer-based methods are limited                          An analysis of time and memory complexity
+Respective of its buffer size, kNN-methods can re- The worst-case complexity is outlined in Table 4 (for
+spond to drift by forgetting old instances (from old the vanilla methods, which does not take into ac-
+concepts) and taking in (i.e., learning from) new ones. count the additional overhead of ensembles and drift
+
+
+                                                      10
+         1.00                                                                   1.0
+         0.98
+                                                                                0.9
+         0.96
+         0.94                                                                   0.8
+         0.92
+         0.90                                                                   0.7
+         0.88
+                                                                     kNN
+                                                                                0.6     kNN
+         0.86                                                        SGD                SGD
+                                                                     HT                 HT
+         0.84                                                                   0.5
+                   0       0        0      0      0      0      0      0                 0       0      0      0      0      0      0      0
+                100     200     300     400    500    600    700    800               100     200    300    400    500    600    700    800
+                           (a) Stationary concept                                                    (b) Sudden drift
+
+
+
+          1.0                                                                   1.0
+          0.9                                                                   0.9
+          0.8                                                                   0.8
+          0.7                                                                   0.7
+          0.6                                                                   0.6
+          0.5                                                                   0.5
+          0.4                                                                   0.4
+          0.3     kNN
+                  SGD                                                           0.3     kNN
+                                                                                        SGD
+          0.2     HT                                                                    HT
+                                                                                0.2
+                   0       0        0      0      0      0      0      0                 0       0      0      0      0      0      0      0
+                100     200     300     400    500    600    700    800               100     200    300    400    500    600    700    800
+                               (c) Incremental drift                                                 (d) Gradual drift
+
+Figure 5: Results (classification accuracy over a sliding window of 200 instances on synthetic streams. Notice
+that the vertical axes are scaled for greater visibility of separation.
+
+
+detectors nor basis expansion for PBF-SGD). We can
+further remark computational time and memory ex-
+pectations of SGD are constant across time (the ex-
+pected running time is the same for each instance in
+the stream), as also with kNN (given a fixed batch                          Table 3: Overall accuracy (average over entire
+size). On the other hand, HT costs are not constant,                        stream) of methods; seen also in experiments of Fig-
+but continue to grow with the depth of the tree (the                        ure 6 (regarding the Synthetic stream) and Figure 7
+` term in Table 4). This is an issue which as, to                           for the others.
+our knowledge, not been considered in depth in the
+literature: as trees in an ensemble grow and are re-                                                  SAMkNN              PBF-SGD              RF-HT
+set under drift, time and space complexity fluctuates                           Electricity           79.8                85.9                 86.2
+– making practical requirements difficult to estimate                           RTG                   78.8                81.8                 77.9
+precisely in advance. If there is no drift – then the                           CoverType             93.3                92.6                 93.9
+trees may, in theory, grow unbounded and use up all                             Synthetic             96.0                95.1                 93.6
+available memory.
+
+
+
+
+                                                                           11
+          1.000
+          0.975
+          0.950
+          0.925
+          0.900
+          0.875
+          0.850       SAM-kNN
+                      PBF-SGD
+                      RF-HT
+          0.825
+                  0                0           0              0       0           0         0               0                  0
+              100               200        300             400    500          600       700             800                900
+
+Figure 6: An incremental drift scenario like that of Figure 5 except that the drift is constant across the
+entire stream (τ1 = τ0 , and τ2 = T wrt Table 1).
+
+
+Table 4: An outline of time and space complexity
+                                                                                          1000                                SAMkNN
+for different methods, with a moving window of w                                                                              SGD
+                                                                                                                              PBF-SGD(2)
+                                                                                                                              PBF-SGD(3)
+                                                                                           800
+examples, taking the k nearest neighbors (for kNN),                                                                           RF-HT
+                                                                                                                              HT
+                                                                                           600
+in a problem of d attributes. For HT, ` is the number
+                                                                                           400
+of leaves, but note that this is O(n) in the worst case.
+                                                                                           200
+To simplify, we have considered a binary (2 class)
+problem with one split considered per attribute in                                          0
+                                                                                                 Synth         CovType10k   Elec10k
+
+
+the case of trees.
+                                                                           Table 5: Total running time under prequential evalu-
+              Method              Time             Space                   ation (in seconds) on a selection of the datasets. We
+              kNN                 O(wdk)           O(wd)                   compare SGD with both polynomial of degree 2 and
+              HT                  O(d)             O(`d)                   3 (PBF-SGD(2) and (3), respectively) – for sake of
+              SGD                 O(d)             O(d)                    comparison. Synth refers to the data of Figure 6. The
+                                                                           time including the initial block (which is not evalu-
+                                                                           ated in terms of accuracy). Note that for all timing
+Limitations and Further Considerations                                     experiments we only considered the first 10,000 in-
+                                                                           stances.
+We need to acknowledge that an incremental
+decision-tree based approach continues to be a pow-
+erful competitor, and more efficient implementations
+exist than the Python framework we used in this
+work. Furthermore, it is clear that more work is                           tion in the streaming literature should be paid to
+needed to investigate performance under sudden and                         neural networks, in particularly on ways to param-
+gradual and mixed types of drift. There are other                          eterize them effectively for data-stream scenarios, so
+state-of-the-art HT methods as well as kNN methods                         that they are more easy to deploy.
+which could be additionally experimented with.
+   However, we have shown analytically and empiri-                            In general it is a more promising strategy to model
+cally that the most desirable and efficient option is                      the drift and pre-empt its development, rather than
+supported naturally by gradient descent (and by ex-                        waiting for an indication that drift has already oc-
+tension, neural networks), given certain constraints                       curred and following such an indication retrospec-
+wrt the learning rate, namely that is significantly                        tively, to reset models that have been previously
+greater than zero. This indicates that more atten-                         built.
+
+
+                                                                          12
+8    Conclusions                                          [2] David Barber. Bayesian Reasoning and Machine
+                                                              Learning. Cambridge University Press, 2012.
+The literature for data streams is well furnished with
+a great number and diversity of ensembles and drift-      [3] Albert Bifet and Ricard Gavaldà. Learning from
+detection methodologies for employing incremental             time-changing data with adaptive windowing. In
+decision tree learners such as Hoeffding trees. These         SDM ’07: 2007 SIAM International Conference
+methods continue to obtain success in empirical eval-         on Data Mining, 2007.
+uations. In this paper we have taken a closer analyti-
+                                                          [4] Albert Bifet and Ricard Gavaldà. Adaptive
+cal look at the reasons for this performance, but also
+                                                              learning from evolving data streams. In IDA
+we have been able to highlight its limitations, namely
+                                                              2009: 8th International Symposium on Intel-
+the cost involved of its performance under sustained
+                                                              ligent Data Analysis, pages 249–260. Springer
+drift, where it forced to carry out a continued de-
+                                                              Berlin Heidelberg, September 2009.
+structive adaptation.
+   In particular, we showed that concept-drifting data    [5] Albert Bifet, Geoff Holmes, Richard Kirkby, and
+streams can be treated as time series, which in turn          Bernhard Pfahringer. Moa: Massive Online
+suggests predictability, thus encouraging an approach         Analysis. Journal of Machine Learning Research
+of tracking and estimating the evolution of a concept,        (JMLR), 11:1601–1604, August 2010.
+and carrying out continuous adaptation to concept
+drift. To demonstrate this we derived an appropri-        [6] Albert Bifet, Geoffrey Holmes, and Bernhard
+ate approach based on stochastic gradient descent.            Pfahringer. Leveraging bagging for evolving data
+The method we used was simple, but results clearly            streams. In ECML PKDD’10, pages 135–150.
+supported our analytical and theoretical argument             Springer-Verlag, 2010.
+which carries important implications: gradient-based
+methods offer and effective and parsimonious way to       [7] Hanen Borchani, Pedro Larrañaga, João
+deal with dynamic concept drifting data streams and           Gama, and Concha Bielza.          Mining multi-
+should be considered more seriously in future research        dimensional concept-drifting data streams using
+in this area. This is especially true with the advent         Bayesian network classifiers. Intell. Data Anal.,
+of more powerful and easy-to-deploy neural networks           20(2):257–280, 2016.
+and recent improvements in gradient descent.
+                                                          [8] Damien Brain and G. Webb. On the effect of
+   In the future will investigate more complex sce-           data set size on bias and variance in classifica-
+narios involving oscillating and mixtures of different        tion learning. In Proceedings of the Fourth Aus-
+times of drift, and experiment with more state-of-the-        tralian Knowledge Acquisition Workshop, pages
+art gradient-descent approaches, such as deep learn-          117–128, 1999.
+ing. Our study already indicates that further investi-
+gation along these lines will yield promising results.    [9] Ke-Lin Du and M. N.S. Swamy. Neural Net-
+                                                              works and Statistical Learning. Springer Pub-
+                                                              lishing Company, Incorporated, 2013.
+References                                          [10] João Gama, Pedro Medas, Gladys Castillo, and
+                                                         Pedro Rodrigues. Learning with drift detection.
+ [1] Ezilda Almeida, Carlos Ferreira, and João          In SBIA 2004: 17th Brazilian Symposium on Ar-
+     Gama. Adaptive model rules from data streams.       tificial Intelligence. Proceedings, pages 286–295.
+     In ECML-PKDD ’13: European Conference on            Springer Berlin Heidelberg, 2004.
+     Machine Learning and Knowledge Discovery in
+     Databases, pages 480–492. Springer Berlin Hei- [11] João Gama, Indre Zliobaite, Albert Bifet,
+     delberg, 2013.                                      Mykola       Pechenizkiy,      and    Abdelhamid
+
+                                                     13
+     Bouchachia. A survey on concept drift adap- [20] Diego Marron, Jesse Read, and Albert Bifet.
+     tation. ACM Computing Surveys, 46(4):44:1–        Data stream classification using random feature
+     44:37, 2014.                                      functions and novel method combinations. Jour-
+                                                       nal of Systems and Software, 127(May):195204,
+[12] Heitor M. Gomes, Albert Bifet, Jesse Read,        2017.
+     Jean Paul Barddal, Fabrcio Enembreck, Bern-
+     hard Pfahringer, Geoff Holmes, and Talel Ab- [21] Jacob Montiel, Jesse Read, and Albert Bifet.
+     dessalem. Adaptive random forests for evolv-      Scikit-MultiFlow: A multi-output streaming
+     ing data stream classification. Machine Learning  framework. CoRR, abs/1807.04662:1–5, 2018.
+     Journal, 106(9-10):1469–1495, 2017.               ArXiv.
+
+[13] Heitor Murilo Gomes, Jean Paul Barddal, [22] S. Muthukrishnan, Eric van den Berg, and Yi-
+     Fabrı́cio Enembreck, and Albert Bifet. A sur-    hua Wu. Sequential change detection on data
+     vey on ensemble learning for data stream classi- streams. In Workshops Proceedings of the 7th
+     fication. ACM Comput. Surv., 50(2):23:1–23:36,   IEEE International Conference on Data Mining
+     March 2017.                                      (ICDM 2007).
+
+[14] Vera Hofer and Georg Krempl. Drift mining in [23] Sinno Jialin Pan and Qiang Yang. A survey on
+     data: A framework for addressing drift in classi-      transfer learning. IEEE Trans. on Knowl. and
+     fication. Computational Statistics & Data Anal-        Data Eng., 22(10):1345–1359, October 2010.
+     ysis, 57(1):377 – 391, 2013.                      [24] Jesse Read, Albert Bifet, Bernhard Pfahringer,
+[15] Geoff Hulten, Laurie Spencer, and Pedro Domin-         and Geoff Holmes. Batch-incremental versus
+     gos.     Mining time-changing data streams.            instance-incremental learning in dynamic and
+     In ACM SIGKDD international conference on              evolving data. In IDA 2012: 11th Interna-
+     Knowledge discovery and data mining (KDD               tional Symposium on Advances in Intelligent
+     ’09), pages 97–106, 2001.                              Data Analysis, pages 313–323, 2012.
+                                                      [25] A. Shaker and E. Hllermeier. Iblstreams: a sys-
+[16] Ioannis Katakis, Grigorios Tsoumakas, and
+                                                           tem for instance-based classification and regres-
+     Ioannis Vlahavas. Tracking recurring contexts
+                                                           sion on data streams. Evolving Systems, 3:235 –
+     using ensemble classifiers: an application to
+                                                           249, 2012.
+     email filtering. Knowledge and Information Sys-
+     tems, 22(3):371–391, Mar 2010.                   [26] Mark Tennant, Frederic Stahl, Omer Rana, and
+                                                           Joo Brtolo Gomes. Scalable real-time classifica-
+[17] J. Zico Kolter and Marcus A. Maloof. Dynamic
+                                                           tion of data streams with concept drift. Future
+     weighted majority: An ensemble method for
+                                                           Generation Computer Systems, 75:187 – 199,
+     drifting concepts. J. Mach. Learn. Res., 8:2755–
+                                                           2017.
+     2790, 2007.
+                                                      [27] Indrė Žliobaitė, Albert Bifet, Jesse Read, Bern-
+[18] Bartosz Krawczyk, Leandro L. Minku, Joo               hard Pfahringer, and Geoff Holmes. Evaluation
+     Gama, Jerzy Stefanowski, and Micha Woniak.            methods and decision theory for classification of
+     Ensemble learning for data stream analysis: A         streaming data with temporal dependence. Ma-
+     survey. Information Fusion, 37:132 – 156, 2017.       chine Learning, 98(3):455–482, 2014.
+[19] Viktor Losing, Barbara Hammer, and Heiko [28] Ge Xie, Yu Sun, Minlong Lin, and Ke Tang. A
+     Wersing. KNN classifier with self adjusting           Selective Transfer Learning Method for Concept
+     memory for heterogeneous concept drift. In            Drift Adaptation, pages 353–361. Springer Inter-
+     ICDM’16: IEEE 16th International Conference           national Publishing, Cham, 2017.
+     on Data Mining, pages 291–300, 2016.
+
+
+                                                     14
+              1.00                                                                                                                   SAM-kNN
+                                                                                                                                     PBF-SGD
+                                                                                                                                     RF-HT
+              0.95
+              0.90
+              0.85
+              0.80
+              0.75
+              0.70
+
+                     0                00        00            00                   00      00                00        00                      00
+                 500               100       150           200               250        300               350       400                   450
+                                                                     (a) Electricity
+
+
+
+               0.9
+               0.8
+               0.7
+               0.6
+               0.5
+               0.4       SAM-kNN
+                         PBF-SGD
+                         RF-HT
+               0.3
+                             0                         0                      00                     00                         00
+                          600                      800                     100                    120                       140
+                                                                     (b) CoverType
+
+
+              1.00                                                                                                                   SAM-kNN
+                                                                                                                                     PBF-SGD
+                                                                                                                                     RF-HT
+              0.95
+              0.90
+              0.85
+              0.80
+              0.75
+              0.70
+
+                     0                   0         0             0                  0         0                 0           0
+                 200               300       400            500                  600     700               800        900
+                                             (c) Random Tree Generated (RTG) stream
+
+Figure 7: Average accuracy over sliding window of 200 for methods detailed in column 3 of Table 2. For
+visualization, we plot only a subset of CoverType. See Table 3 for total accuracy over the streams.
+
+
+
+
+                                                                           15
+

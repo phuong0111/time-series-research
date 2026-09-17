@@ -1,0 +1,7 @@
+# Heavy raw datasets (284G) — tracked out-of-band, not in git
+dataset/*/
+!dataset/_logs/
+
+# Python
+__pycache__/
+*.py[cod]

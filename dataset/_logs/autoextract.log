@@ -1,0 +1,40 @@
+SKIP (done)        ./01_CESNET-TimeSeries24/institution_subnets.tar.gz
+SKIP (done)        ./01_CESNET-TimeSeries24/institutions.tar.gz
+CORRUPT/PARTIAL    ./01_CESNET-TimeSeries24/ip_addresses_full.tar.gz
+SKIP (done)        ./01_CESNET-TimeSeries24/ip_addresses_sample.tar.gz
+SKIP (done)        ./01_CESNET-TimeSeries24/times.tar.gz
+SKIP (done)        ./02_CESNET-MINER22/DeCryptoDatasets.tar.gz
+SKIP (done)        ./03_CIC-Bell-DNS-2021/CSVs-20240207T040926Z-001.zip
+SKIP (done)        ./04_HTTPS-BruteForce/brute-force-dataset.zip
+EXTRACT            ./05_DoH-Real-World/DoH-Real-World.tar.gz -> ./05_DoH-Real-World/DoH-Real-World
+EXTRACT            ./06_IoT-23/iot_23_datasets_small.tar.gz -> ./06_IoT-23/iot_23_datasets_small
+CORRUPT/PARTIAL    ./10_CTU-13/CTU-13-Dataset.tar.bz2
+SKIP (done)        ./13_CIC-DoH-Brw-2020/CSVs.zip
+=== 2026-09-15 13:33:44 final state ===
+22G	/root/time-series-research/dataset/01_CESNET-TimeSeries24/
+2.4G	/root/time-series-research/dataset/02_CESNET-MINER22/
+597M	/root/time-series-research/dataset/03_CIC-Bell-DNS-2021/
+1.8G	/root/time-series-research/dataset/04_HTTPS-BruteForce/
+198G	/root/time-series-research/dataset/05_DoH-Real-World/
+53G	/root/time-series-research/dataset/06_IoT-23/
+79M	/root/time-series-research/dataset/07_Edge-IIoTset/
+58M	/root/time-series-research/dataset/08_ISCX-Tor-2016/
+1006M	/root/time-series-research/dataset/09_VNAT/
+1.9G	/root/time-series-research/dataset/10_CTU-13/
+353M	/root/time-series-research/dataset/11_CIC-IDS-2017/
+560M	/root/time-series-research/dataset/12_UNSW-NB15/
+3.5G	/root/time-series-research/dataset/13_CIC-DoH-Brw-2020/
+TOTAL 284G
+--- archives still present (originals, safe to delete) ---
+  51764080 /root/time-series-research/dataset/03_CIC-Bell-DNS-2021/CSVs-20240207T040926Z-001.zip
+ 774004934 /root/time-series-research/dataset/01_CESNET-TimeSeries24/institution_subnets.tar.gz
+17525032624 /root/time-series-research/dataset/01_CESNET-TimeSeries24/ip_addresses_full.tar.gz
+ 170864480 /root/time-series-research/dataset/01_CESNET-TimeSeries24/ip_addresses_sample.tar.gz
+    211467 /root/time-series-research/dataset/01_CESNET-TimeSeries24/times.tar.gz
+ 479428489 /root/time-series-research/dataset/01_CESNET-TimeSeries24/institutions.tar.gz
+9373916249 /root/time-series-research/dataset/06_IoT-23/iot_23_datasets_small.tar.gz
+ 209080743 /root/time-series-research/dataset/04_HTTPS-BruteForce/brute-force-dataset.zip
+1997547391 /root/time-series-research/dataset/10_CTU-13/CTU-13-Dataset.tar.bz2
+ 808094135 /root/time-series-research/dataset/13_CIC-DoH-Brw-2020/CSVs.zip
+ 350444029 /root/time-series-research/dataset/02_CESNET-MINER22/DeCryptoDatasets.tar.gz
+12809277548 /root/time-series-research/dataset/05_DoH-Real-World/DoH-Real-World.tar.gz

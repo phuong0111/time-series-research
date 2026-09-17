@@ -1,0 +1,11 @@
+SKIP (done)        ./01_CESNET-TimeSeries24/institution_subnets.tar.gz
+SKIP (done)        ./01_CESNET-TimeSeries24/institutions.tar.gz
+SKIP (done)        ./01_CESNET-TimeSeries24/ip_addresses_sample.tar.gz
+SKIP (done)        ./01_CESNET-TimeSeries24/times.tar.gz
+EXTRACT            ./02_CESNET-MINER22/DeCryptoDatasets.tar.gz -> ./02_CESNET-MINER22/DeCryptoDatasets
+EXTRACT            ./03_CIC-Bell-DNS-2021/CSVs-20240207T040926Z-001.zip -> ./03_CIC-Bell-DNS-2021/CSVs-20240207T040926Z-001
+EXTRACT            ./04_HTTPS-BruteForce/brute-force-dataset.zip -> ./04_HTTPS-BruteForce/brute-force-dataset
+SKIP (downloading) ./05_DoH-Real-World/DoH-Real-World.tar.gz
+SKIP (downloading) ./06_IoT-23/iot_23_datasets_small.tar.gz
+SKIP (downloading) ./10_CTU-13/CTU-13-Dataset.tar.bz2
+EXTRACT            ./13_CIC-DoH-Brw-2020/CSVs.zip -> ./13_CIC-DoH-Brw-2020/CSVs
