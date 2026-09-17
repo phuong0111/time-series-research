@@ -53,8 +53,13 @@ class ContinuousSGD(Learner):
     def update(self, x, y):
         self.t += 1                          # one more instance seen
         if self.decay:                       # the mistake Section 5 warns about
-            # lambda_t = lambda_0 / sqrt(t): the textbook Robbins-Monro schedule.
-            # After T=4000 this is a 63x shrink, freezing theta_hat in one concept.
+            # lambda_t = lambda_0 / sqrt(t): the standard online-convex-optimisation
+            # schedule (the one behind O(sqrt(T)) regret bounds). NOT Robbins-Monro,
+            # which also needs sum(lambda_t^2) < infinity -- sum(1/t) diverges.
+            # After T=4000 this is a 63x shrink. Since theta_t here rotates at a
+            # CONSTANT 0.01 rad/step, any schedule decaying to zero is eventually
+            # outrun: by t=4000 theta_hat sits ~74 deg from theta, i.e. no better
+            # than chance. That is the Section 5 failure mode, worth +0.262 error.
             self.lam = self.lam0 / math.sqrt(self.t)
         # g = y - h is the NEGATIVE gradient of log-loss wrt the logit z = theta_hat.x:
         #   L = -[y log h + (1-y) log(1-h)],  dL/dz = h - y,  dL/dtheta_i = (h-y) x_i
