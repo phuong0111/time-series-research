@@ -190,131 +190,324 @@ def section(label, line):
 
 
 # Ghi chú cho người trình bày (tiếng Việt), theo thứ tự slide.
+# Mỗi ghi chú gồm: ý cần nói, số liệu cần dẫn, và câu hỏi có thể gặp.
 NOTES = [
-# 1 Title
-"Giới thiệu: bài trình bày gồm ba phần — khái niệm trôi (concept drift) là gì, "
-"cách cộng đồng nghiên cứu xử lý nó, và kết quả tái lập bài báo Read (2018). "
-"Phần tái lập chỉ là một mục trong sáu mục, không phải trọng tâm duy nhất.",
-# 2 Outline
-"Nêu nhanh sáu phần. Nhấn mạnh mạch bài: từ định nghĩa bài toán, sang phương pháp, "
-"rồi đến một lập luận cụ thể, phần kiểm chứng bằng thực nghiệm, và cuối cùng là "
-"các câu hỏi còn bỏ ngỏ.",
-# 3 Section 1
-"Chuyển sang phần định nghĩa bài toán. Ý chính: phân phối mục tiêu không cố định "
-"mà thay đổi theo thời gian.",
-# 4 The problem
-"Học máy truyền thống giả định phân phối đồng thời p(x, y) cố định — mô hình khớp "
-"với mẫu huấn luyện thì cũng khớp với dữ liệu triển khai. Luồng dữ liệu phá vỡ giả "
-"định đó. Nhấn mạnh: mô hình không chỉ 'cũ' mà là 'sai đặc tả', vì nó ước lượng một "
-"mục tiêu không còn tồn tại. Hai hệ quả quan trọng: suy giảm diễn ra âm thầm (không "
-"có lỗi nào được báo), và không thể huấn luyện lại từ đầu vì luồng là vô hạn và nhãn "
-"đến muộn.",
-# 5 Taxonomy
-"Bốn dạng trôi theo phân loại kinh điển. Cột thứ ba là cột quan trọng nhất cho việc "
-"thiết kế phương pháp: chỉ trôi tăng dần (incremental) mới tạo ra các trạng thái "
-"trung gian là khái niệm thật, tức là có một quỹ đạo để bám theo. Trôi dần dần "
-"(gradual) chỉ là sự pha trộn giữa hai khái niệm cố định.",
-# 6 Which factor
-"Phân tích phân phối đồng thời thành hai thừa số cho thấy có đúng hai chỗ có thể "
-"thay đổi. Chỉ thay đổi ở phân phối có điều kiện mới làm dịch chuyển biên quyết định, "
-"nên chỉ nó mới nhất thiết làm giảm độ chính xác. Điểm đáng lưu ý: phần lớn công trình "
-"gần đây về dự báo chuỗi thời gian lại xử lý thừa số thứ nhất.",
-# 7 Context drift
-"Thuật ngữ 'context drift' được dùng cho ba hiện tượng khác nhau. Nghĩa thứ nhất và "
-"thứ hai biểu hiện giống hệt nhau — sai số tăng theo thời gian — nhưng đòi hỏi cách "
-"xử lý ngược nhau. Nếu một ngữ cảnh có chu kỳ giải thích được sự thay đổi thì việc "
-"thích nghi là lãng phí, vì chu kỳ sau sẽ đảo ngược nó.",
-# 8 Section 2
-"Chuyển sang phần phương pháp: phát hiện trôi, và thích nghi sau khi trôi đã xảy ra.",
-# 9 Detection
-"Các bộ phát hiện không quan sát dữ liệu mà quan sát chuỗi sai số. ADWIN là lựa chọn "
-"mặc định trên thực tế vì có cận sai dương rõ ràng và bộ nhớ chỉ O(log W). Điểm cần "
-"nhấn: một bộ phát hiện trôi thực chất đang hỏi 'chuỗi thời gian này có thay đổi không', "
-"nên bản thân nó đã là một phương pháp chuỗi thời gian.",
-# 10 Evaluation
-"Ba hạn chế của quy trình đánh giá hiện hành. Hạn chế thứ ba là nghiêm trọng nhất "
-"trong thực tế: các bộ phát hiện kinh điển đều giả định nhãn có ngay lập tức, trong "
-"khi ở bài toán gian lận thẻ, nhãn đến sau 30–180 ngày. Nếu tín hiệu sai số không "
-"quan sát được trong nhiều tháng thì mọi phương pháp dựa vào nó đều không dùng được.",
-# 11 Mechanisms
-"Đây là slide quan trọng nhất của phần này. Cơ chế thích nghi khả dụng được quyết "
-"định bởi mô hình được cấu tạo từ cái gì. Cây quyết định có tham số là một cấu trúc "
-"rời rạc nên không tồn tại bước dịch chuyển nhỏ — chỉ có thể mọc thêm hoặc phá đi. "
-"Bộ đệm cũng vậy: mô hình chính là dữ liệu lưu trữ. Chỉ mô hình có tham số liên tục "
-"mới bám theo được khái niệm.",
-# 12 Section 3
-"Chuyển sang bài báo Read (2018), nền tảng cho phần tái lập tiếp theo.",
-# 13 Lemma 1
-"Lập luận cốt lõi. Cộng đồng giả định dữ liệu độc lập cùng phân phối trong mỗi khái "
-"niệm, nhưng trôi khái niệm chính là sự thay đổi khái niệm đó — nên giả định tự mâu "
-"thuẫn. Con số minh họa được đếm trực tiếp trên luồng 20 bước. Điểm then chốt: thời "
-"điểm đổi τ không quan sát được. Nếu biết τ thì có thể cắt luồng làm đôi và toàn bộ "
-"lập luận sụp đổ; vì không biết, một bước nhảy tức thời biểu hiện thành phụ thuộc "
-"thời gian kéo dài trong tín hiệu sai số.",
-# 14 Trajectory
-"Cách diễn đạt lại: mỗi khái niệm là một điểm trong không gian tham số, trôi là một "
-"quỹ đạo. Nếu là quỹ đạo thì về nguyên tắc có thể dự báo được, và bài toán trôi khái "
-"niệm trở thành bài toán dự báo tham số. Công thức cuối là toàn bộ đơn thuốc của bài "
-"báo: bám theo, không cần bộ phát hiện, không cần khởi tạo lại.",
-# 15 Section 4
-"Chuyển sang phần thực nghiệm: cài đặt lại toàn bộ sáu phương pháp trong Bảng 2 bằng "
-"thư viện chuẩn của Python, chạy trên chính dữ liệu của bài báo.",
-# 16 Setup
-"Số lượng mẫu của hai tập dữ liệu khớp chính xác với con số bài báo nêu. Các phương "
-"pháp được cài đặt lại chứ không thay thế bằng mô hình tương đương — kể cả cây "
-"Hoeffding và ADWIN2. ADWIN2 được kiểm chứng riêng: phát hiện sau 55 mẫu kể từ điểm "
-"đổi thật, và không có báo động giả nào trên 4.000 mẫu dừng.",
-# 17 Results
-"Electricity tái lập tốt: hai trong ba phương pháp nâng cao lệch dưới 2 điểm. "
-"PBF-SGD lệch 5,2 điểm — nguyên nhân nằm ở bậc đa thức chứ không phải tốc độ học, "
-"sẽ nói rõ ở slide sau. CoverType không so sánh được vì bài báo phân loại đủ bảy lớp "
-"còn ở đây rút về nhị phân.",
-# 18 Lambda
-"Bài báo nêu điều kiện không được để tốc độ học giảm về 0, nhưng không có thực nghiệm "
-"tách riêng. Kết quả cho thấy hình phạt lớn nhất là sau trôi đột ngột (18,6 điểm) và "
-"gần như bằng không dưới trôi kéo dài (0,8 điểm) — ngược với trực giác. Lý do: dưới "
-"trôi kéo dài, tốc độ học hằng số cũng chỉ đạt 88,1 nên việc giảm không làm mất thêm "
-"gì; còn sau khi khái niệm bị lấy mẫu lại, tốc độ học còn sống thì học lại được, "
-"đóng băng thì không.",
-# 19 Buffer
-"Đường kNN gần như nằm ngang qua cả năm kịch bản — biên độ 0,6 điểm so với 9,2 điểm "
-"của SGD. Trôi gần như không làm kNN tệ đi, vì kNN chưa bao giờ tích lũy được gì để "
-"trôi làm hỏng. Bài báo nêu hai nhận xét riêng biệt (khả năng bị chặn bởi kích thước "
-"bộ đệm, và không có xu hướng tăng khi dừng); thực ra đó là cùng một tính chất.",
-# 20 Unstated
-"Ba tham số bài báo không nêu, trong đó số chiều dữ liệu tổng hợp là quan trọng nhất: "
-"nó đưa SGD từ 57,7 lên 92,2. Nghĩa là hàng Synthetic trong Bảng 3 chỉ đạt được ở số "
-"chiều lớn, không phải ở d = 2 như chính Hình 4 của bài báo vẽ. Ai trích dẫn cột đó "
-"nên biết điều này.",
-# 21 Section 5
-"Chuyển sang các công trình sau 2018 — đặc biệt là công trình đã hiện thực hóa đúng "
-"điều Read đề xuất.",
-# 22 Families
-"Bốn hướng tiếp cận chính hiện nay. Chỉ hướng cuối cùng thực sự làm điều Read lập "
-"luận: Proceed ước lượng độ trôi giữa dữ liệu huấn luyện gần nhất và mẫu kiểm tra "
-"hiện tại, rồi ánh xạ ước lượng đó thành điều chỉnh tham số qua một bộ sinh được học. "
-"Read lập luận nhưng không xây dựng; bảy năm sau Proceed xây dựng đúng ánh xạ đó.",
-# 23 Foundation models
-"Với mô hình nền tảng, trôi khái niệm không biến mất mà chuyển vị trí. Nếu mô hình "
-"được phục vụ qua API thì không thể sửa trọng số, nên phải thích nghi bằng cách học "
-"cấu trúc sai số trong ngữ cảnh. Cả hai hướng vẫn là thích nghi liên tục theo nghĩa "
-"ở phần 2 — chỉ khác là tham số nằm ở chỗ khác.",
-# 24 Section 6
-"Chuyển sang phần cuối: những gì còn bỏ ngỏ và những thí nghiệm có thể làm ngay.",
-# 25 Open problems
-"Vấn đề mở quan trọng nhất là vấn đề thứ nhất: chưa có tiêu chí nào phân biệt trôi "
-"thật với ngữ cảnh bị bỏ sót. Hai cách giải thích đòi hỏi hai cách xử lý ngược nhau, "
-"mà không có công trình nào chỉ ra đang ở trường hợp nào.",
-# 26 Proposed
-"Bốn thí nghiệm, mỗi thí nghiệm nêu kèm một dự đoán có thể bị bác bỏ — đó là điều "
-"phân biệt đề xuất với mong muốn. Nếu trình bày thiếu thời gian, hãy ưu tiên thí "
-"nghiệm B: nó trả lời trực tiếp vấn đề mở thứ nhất, và dữ liệu Electricity đã sẵn có "
-"ngữ cảnh chu kỳ quan sát được.",
-# 27 Summary
-"Tóm tắt sáu ý. Nếu còn thời gian, nên kết thúc bằng câu hỏi mở ở slide trước thay vì "
-"bằng slide tóm tắt — kết ở một câu hỏi mình có điều kiện trả lời sẽ mở ra trao đổi.",
+# 1 --------------------------------------------------------------------------
+"MỞ ĐẦU (~1 phút). Bài gồm ba khối: (a) trôi khái niệm là gì và cộng đồng xử lý ra "
+"sao — đây là phần khảo sát, chiếm nhiều nhất; (b) một lập luận cụ thể của Read "
+"(2018) và kết quả tái lập của mình; (c) các vấn đề còn mở.\n\n"
+"Nói rõ ngay từ đầu rằng phần tái lập chỉ là một trong sáu mục, để người nghe không "
+"chờ đợi một bài báo cáo thực nghiệm thuần túy.\n\n"
+"Phân bổ thời gian gợi ý: phần 1–2 khoảng 12 phút, phần 3 khoảng 6 phút, phần 4 "
+"khoảng 10 phút, phần 5–6 khoảng 7 phút.",
+# 2 --------------------------------------------------------------------------
+"DÀN Ý (~30 giây). Đọc lướt sáu mục, không giải thích từng mục.\n\n"
+"Mạch lập luận cần làm rõ: bài toán (1) → cách xử lý hiện có (2) → một lập luận cụ "
+"thể nói rằng cách xử lý phổ biến là sai hướng (3) → kiểm chứng lập luận đó bằng thực "
+"nghiệm (4) → những gì đã xảy ra sau đó (5) → những gì còn lại (6).\n\n"
+"Nếu bị hỏi 'tại sao chọn bài báo 2018 cũ như vậy', trả lời trước: vì đề xuất trong "
+"đó mãi đến 2025 mới được hiện thực hóa, và đó chính là nội dung phần 5.",
+# 3 --------------------------------------------------------------------------
+"CHUYỂN MỤC. Một câu: 'Trước hết cần định nghĩa chính xác bài toán, vì thuật ngữ "
+"trong lĩnh vực này được dùng khá lỏng lẻo.'",
+# 4 --------------------------------------------------------------------------
+"BÀI TOÁN (~2 phút). Bắt đầu từ giả định của học máy truyền thống: phân phối đồng "
+"thời p(x, y) cố định, nên mô hình khớp với mẫu huấn luyện thì cũng khớp với dữ liệu "
+"triển khai. Luồng dữ liệu phá vỡ đúng giả định này.\n\n"
+"Nhấn mạnh cách diễn đạt: mô hình không 'cũ' mà 'sai đặc tả' (misspecified) — nó ước "
+"lượng một mục tiêu không còn tồn tại. Đây không phải vấn đề thiếu dữ liệu.\n\n"
+"Ví dụ thực tế nên nêu 1–2 cái: nhu cầu điện (thói quen tiêu dùng, thời tiết), phát "
+"hiện gian lận (đối thủ thay đổi chiến thuật), phát hiện xâm nhập mạng.\n\n"
+"Hai hệ quả là phần quan trọng nhất slide này: (1) suy giảm âm thầm — không có "
+"exception nào được ném ra, chỉ có độ chính xác tụt dần, nên nếu không đo thì không "
+"biết; (2) không thể huấn luyện lại từ đầu — luồng vô hạn, và nhãn thường đến muộn "
+"(sẽ quay lại ý này ở slide 10).",
+# 5 --------------------------------------------------------------------------
+"PHÂN LOẠI (~2 phút). Bốn dạng theo Gama et al. (2014), Read dùng lại ở mục 3.\n\n"
+"Ví dụ nhanh cho từng dạng: đột ngột — cảm biến được hiệu chuẩn lại; tăng dần — máy "
+"móc mòn đi theo thời gian; dần dần — thói quen người dùng chuyển từ A sang B; lặp "
+"lại — nhu cầu điện ngày thường so với cuối tuần.\n\n"
+"Cột thứ ba mới là cột đáng nói. Với trôi tăng dần, các trạng thái trung gian là "
+"khái niệm THẬT, tức tồn tại một quỹ đạo liên tục để bám theo. Với trôi dần dần thì "
+"không: chỉ có hai khái niệm cố định và một trọng số pha trộn α thay đổi — nên không "
+"có quỹ đạo nào để dự báo. Ý này sẽ được dùng lại ở slide 14, nên cần nói kỹ ở đây.\n\n"
+"Trôi lặp lại là một trục riêng, không loại trừ ba dạng kia: bất kỳ dạng nào cũng có "
+"thể lặp.",
+# 6 --------------------------------------------------------------------------
+"HAI VỊ TRÍ THAY ĐỔI (~2 phút). Viết phân tích p(x, y) = p(x)·p(y|x) lên bảng nếu "
+"có, vì cả slide này xoay quanh nó: phân phối đồng thời chỉ có đúng hai thừa số, nên "
+"chỉ có đúng hai chỗ để thay đổi.\n\n"
+"Trôi ảo (virtual drift): p(x) đổi nhưng biên quyết định đứng yên — mô hình vẫn đúng, "
+"chỉ là dữ liệu đến từ vùng khác. Trôi khái niệm thật: p(y|x) đổi, biên quyết định "
+"dịch chuyển, độ chính xác nhất thiết giảm.\n\n"
+"Điểm gây ngạc nhiên nên nhấn: phần lớn công trình dự báo chuỗi thời gian 2022–2024 "
+"(RevIN, Dish-TS, SAN) xử lý thừa số THỨ NHẤT. Chúng chuẩn hóa phân phối biên rồi "
+"khôi phục lại, hoàn toàn không đụng tới p(y|x).\n\n"
+"Hệ quả thực tiễn: một bộ phát hiện không dùng nhãn chỉ quan sát được p(x), nên về "
+"nguyên tắc không thể phân biệt hai trường hợp này. Đây là lý do vấn đề nhãn muộn ở "
+"slide 10 nghiêm trọng đến vậy.",
+# 7 --------------------------------------------------------------------------
+"BA NGHĨA CỦA 'CONTEXT DRIFT' (~2 phút). Slide này để gỡ rối thuật ngữ trước khi đọc "
+"tài liệu, vì ba nghĩa bị dùng lẫn lộn.\n\n"
+"Nghĩa 1 là trôi khái niệm đúng nghĩa. Nghĩa 2 (CDS) nói rằng p(y|x) chỉ CÓ VẺ thay "
+"đổi, thực ra p(y|x, c) vẫn cố định — chỉ là biến ngữ cảnh c không được đưa vào mô "
+"hình. Nghĩa 3 thuộc về mô hình nền tảng, sẽ nói ở slide 23.\n\n"
+"Đây là điểm quan trọng nhất: nghĩa 1 và 2 cho CÙNG một triệu chứng — sai số tăng "
+"theo thời gian — nhưng đòi hỏi xử lý NGƯỢC nhau. Nếu c là chu kỳ quan sát được "
+"(ví dụ giờ trong ngày), thì thích nghi là lãng phí: chu kỳ sau sẽ đảo ngược mọi "
+"điều chỉnh vừa làm. Cách đúng là điều kiện hóa theo c, không phải bám theo.\n\n"
+"SOLID (KDD'24) đo trực tiếp bằng thông tin tương hỗ giữa phần dư dự báo và ngữ cảnh "
+"ứng viên. Công thức này sẽ quay lại ở thí nghiệm B, slide 26.",
+# 8 --------------------------------------------------------------------------
+"CHUYỂN MỤC. 'Đã có bài toán, giờ xem cộng đồng xử lý thế nào — gồm hai câu hỏi tách "
+"biệt: làm sao biết trôi đã xảy ra, và làm gì sau khi biết.'",
+# 9 --------------------------------------------------------------------------
+"PHÁT HIỆN TRÔI (~2 phút). Nhấn ngay: các bộ phát hiện KHÔNG quan sát dữ liệu mà "
+"quan sát chuỗi sai số của mô hình.\n\n"
+"DDM và EDDM dùng ngưỡng mang tính kinh nghiệm. ADWIN là lựa chọn mặc định trên thực "
+"tế vì có bảo đảm lý thuyết: giữ một cửa sổ W, xét mọi cách cắt W thành W0·W1, và cắt "
+"khi hai nửa khác nhau quá ngưỡng; xác suất báo động giả bị chặn bởi δ.\n\n"
+"Chi tiết đáng nói nếu có thời gian: ADWIN lưu cửa sổ dưới dạng exponential histogram "
+"nên bộ nhớ chỉ O(log W) thay vì O(W); và độ dài cửa sổ còn lại chính là ước lượng "
+"'khái niệm hiện tại kéo dài bao xa về quá khứ'.\n\n"
+"Câu chốt của slide, cũng là cầu nối sang phần 3: một bộ phát hiện đang hỏi 'chuỗi "
+"E_t này có thay đổi không' — tức bản thân nó đã là một phương pháp chuỗi thời gian, "
+"chỉ là không tự nhận.",
+# 10 -------------------------------------------------------------------------
+"HẠN CHẾ ĐÁNH GIÁ (~2 phút). Ba hạn chế, nói theo thứ tự tăng dần mức nghiêm trọng.\n\n"
+"(1) Dữ liệu tổng hợp chiếm đa số: các luồng chuyển giữa những khái niệm định sẵn tại "
+"những thời điểm cố định, phân phối đơn giản, động lực trôi không thực tế. Chưa có "
+"bằng chứng kết quả chuyển được sang dữ liệu thật.\n\n"
+"(2) Đánh giá gián tiếp: lấy 'huấn luyện lại có cải thiện không' làm thước đo sẽ trộn "
+"lẫn chất lượng bộ phát hiện với khả năng thích nghi của mô hình, và không cho biết "
+"độ chính xác lẫn độ trễ phát hiện.\n\n"
+"(3) Nghiêm trọng nhất — độ trễ nhãn. DDM, EDDM, ADWIN đều giả định nhãn có ngay. "
+"Trong phát hiện gian lận, nhãn thật đến sau 30–180 ngày, nên các phương pháp này "
+"không dùng được ở dạng gốc.\n\n"
+"Ý cần chốt, và nên nói rõ vì nó cắt cả hai phía: nếu tín hiệu sai số không quan sát "
+"được trong nhiều tháng thì KHÔNG chỉ bộ phát hiện gặp khó — mọi phương pháp dựa vào "
+"sai số, kể cả phương pháp bám theo ở phần 3, đều gặp khó như nhau.",
+# 11 -------------------------------------------------------------------------
+"BA CƠ CHẾ THÍCH NGHI (~3 phút). Đây là slide quan trọng nhất của phần khảo sát; nên "
+"dành thời gian.\n\n"
+"Luận điểm: cơ chế thích nghi nào KHẢ DỤNG là do mô hình được cấu tạo từ cái gì, chứ "
+"không phải do người thiết kế chọn.\n\n"
+"kNN: mô hình CHÍNH LÀ dữ liệu lưu trữ, nên 'thích nghi' nghĩa là thay dữ liệu — một "
+"thao tác thay thế, không có mức độ. Cây Hoeffding: tham số là một cấu trúc rời rạc "
+"(nút và ngưỡng), nên không tồn tại phép dịch chuyển nhỏ; chỉ có thể mọc thêm hoặc "
+"phá đi rồi dựng lại. SGD: tham số là một vector trong không gian liên tục, nên cộng "
+"thêm một lượng nhỏ là thao tác hợp lệ.\n\n"
+"Nếu được hỏi 'đây là lập luận hay kết quả', trả lời: là tính chất cấu trúc, không "
+"cần thực nghiệm. Trong phần cài đặt của mình, điều này hiện ra thành kiểu trả về: "
+"hàm theta_hat() trả về vector cho SGD và PBF-SGD, trả về None cho kNN, SAMkNN, HT và "
+"RF-HT. Đó không phải hàm chưa cài đặt — mà là không tồn tại θ để trả về.",
+# 12 -------------------------------------------------------------------------
+"CHUYỂN MỤC. 'Phần vừa rồi cho thấy có ba cơ chế. Bài báo sau đây lập luận rằng cộng "
+"đồng đã chọn nhầm cơ chế.'",
+# 13 -------------------------------------------------------------------------
+"MÂU THUẪN VÀ BỔ ĐỀ 1 (~3 phút). Trình bày theo ba bước.\n\n"
+"Bước 1 — mâu thuẫn: cộng đồng giả định dữ liệu độc lập cùng phân phối TRONG mỗi khái "
+"niệm, rồi coi trôi là một sự kiện cần phát hiện để khởi tạo lại mô hình i.i.d. Nhưng "
+"trôi chính là sự thay đổi khái niệm, nên giả định tự mâu thuẫn.\n\n"
+"Bước 2 — số liệu: nếu độc lập thì phải có P(C_t) = P(C_t | C_{t−1}). Đếm trực tiếp "
+"trên luồng 20 bước với τ = 10 được 0,450 so với 0,000. Giải thích tại sao xác suất "
+"thứ hai bằng đúng 0: trôi đột ngột là không đảo ngược, một khi C đã lật thì không "
+"quay lại.\n\n"
+"Bước 3 — phản biện và trả lời: có người sẽ nói khi t đủ lớn thì chỉ số khái niệm trở "
+"thành hằng, nên độc lập được khôi phục trong từng khái niệm. Trả lời: ta KHÔNG quan "
+"sát được τ. Nếu biết τ thì cắt luồng tại đó và mỗi nửa là i.i.d., toàn bộ bài báo sụp "
+"đổ. Vì không biết, một bước nhảy tức thời biểu hiện thành phụ thuộc thời gian kéo dài "
+"trong tín hiệu sai số. Chính sự KHÔNG QUAN SÁT ĐƯỢC của τ mới biến một bước nhảy "
+"thành một chuỗi thời gian.",
+# 14 -------------------------------------------------------------------------
+"QUỸ ĐẠO (~3 phút). Đây là đóng góp chính của bài báo: diễn đạt lại bài toán chứ "
+"không đề xuất thuật toán mới.\n\n"
+"Mỗi khái niệm là một điểm θ trong không gian tham số Θ; trôi trở thành một quỹ đạo. "
+"Đọc bảng theo cột cuối: chỉ trôi tăng dần và trôi lặp lại mới có quỹ đạo để bám. "
+"Nhắc lại ý từ slide 5 — với trôi dần dần thì α_t mới là chuỗi thời gian, còn θ chỉ "
+"nhảy qua lại giữa hai điểm; bài báo thừa nhận điều này và để lại cho nghiên cứu sau.\n\n"
+"Bước suy luận then chốt: nếu là quỹ đạo thì về nguyên tắc DỰ BÁO ĐƯỢC. Khi đó bài "
+"toán trôi khái niệm trở thành bài toán dự báo θ_t — nguyên văn: 'giải bài toán trôi "
+"khái niệm đồng nhất với giải bài toán dự báo θ_t'.\n\n"
+"Công thức cuối là toàn bộ đơn thuốc: cập nhật theo gradient, không bộ phát hiện, "
+"không khởi tạo lại. Kèm đúng một điều kiện — λ không được giảm về 0 — sẽ kiểm chứng "
+"ở slide 18.\n\n"
+"Lưu ý khi bị hỏi: đây vẫn là bám theo có tính phản ứng (reactive), chưa phải dự báo "
+"thật sự. Bài báo lập luận cho dự báo nhưng không xây dựng nó; phần 5 sẽ cho thấy ai "
+"đã xây dựng.",
+# 15 -------------------------------------------------------------------------
+"CHUYỂN MỤC. 'Lập luận đã rõ. Phần này kiểm chứng nó bằng cách cài đặt lại toàn bộ "
+"phương pháp của bài báo và chạy trên chính dữ liệu của bài báo.'",
+# 16 -------------------------------------------------------------------------
+"THIẾT LẬP THỰC NGHIỆM (~2 phút). Ba điểm cần nhấn.\n\n"
+"(1) Dữ liệu lấy từ đúng nguồn bài báo trích dẫn (kho MOA). Số mẫu khớp CHÍNH XÁC: "
+"Electricity 45.312 và CoverType 581.012. Đây là kiểm tra đầu tiên cho thấy đang dùng "
+"đúng tập dữ liệu.\n\n"
+"(2) Cài đặt lại chứ không thay thế: cây Hoeffding thật (tách theo cận Hoeffding, bộ "
+"ước lượng Gauss cho thuộc tính số, naive Bayes ở lá), ADWIN2 thật với exponential "
+"histogram, RF-HT với 100 cây, không gian con ngẫu nhiên và lấy mẫu Poisson(6). Toàn "
+"bộ bằng thư viện chuẩn Python, không scikit-multiflow, không numpy — nên mọi con số "
+"đều truy được về một dòng mã đọc được.\n\n"
+"(3) ADWIN2 được kiểm chứng ĐỘC LẬP trước khi dùng: trên luồng nhảy từ 0,2 lên 0,8 "
+"tại bước 1.000, nó phát hiện sau 55 mẫu; trên 4.000 mẫu dừng, không có báo động giả "
+"nào. Nếu bị hỏi 'làm sao tin bản cài đặt', đây là câu trả lời.\n\n"
+"Cũng nên nói: độ chính xác chỉ tính từ τ_0 = T/10 trở đi, đúng như Bảng 1 quy định "
+"và Bảng 5 xác nhận — nếu tính cả giai đoạn khởi động thì mọi phương pháp đều bị trừ "
+"điểm oan.",
+# 17 -------------------------------------------------------------------------
+"KẾT QUẢ (~3 phút). Đọc bảng theo hàng, không đọc hết mọi số.\n\n"
+"Electricity là hàng sạch nhất: SAMkNN 78,0 so với 79,8 (lệch 1,8) và RF-HT 84,5 so "
+"với 86,2 (lệch 1,7) với đủ 100 cây. Hai trên ba phương pháp nâng cao tái lập trong "
+"vòng 2 điểm — đủ để nói bản cài đặt là đúng.\n\n"
+"RTG: PBF-SGD đạt 82,8 so với 81,8 của bài báo, tức VƯỢT; và thứ hạng bài báo công bố "
+"ở hàng này (PBF-SGD dẫn đầu) cũng được giữ nguyên.\n\n"
+"Hai sai lệch có hệ thống, cả hai đều truy được nguyên nhân. Thứ nhất, PBF-SGD trên "
+"Electricity lệch 5,2 điểm — nguyên nhân là bậc đa thức chứ không phải λ, chứng minh "
+"ở slide 20. Thứ hai, SAMkNN lệch theo thứ tự tăng dần: 1,8 rồi 7,7 rồi 14,9. Chính "
+"THỨ TỰ này là bằng chứng: bản cài đặt của mình nén bộ nhớ dài hạn bằng FIFO thay vì "
+"kMeans++ như Losing et al., nên sai lệch phải lớn dần ở những luồng mà bộ nhớ dài hạn "
+"gánh nhiều việc hơn — và đúng như vậy. Nói rõ: không nên trích dẫn con số SAMkNN này "
+"như con số của SAMkNN gốc.\n\n"
+"CoverType không so sánh được: bài báo phân loại đủ 7 lớp, ở đây rút về nhị phân "
+"một-chống-tất-cả trên một tập con. Chỉ để xếp hạng tương đối giữa các phương pháp.",
+# 18 -------------------------------------------------------------------------
+"ĐIỀU KIỆN VỀ λ (~3 phút). Đây là kết quả đáng nói nhất của phần thực nghiệm, vì nó "
+"SỬA trực giác.\n\n"
+"Bài báo chỉ nêu điều kiện 'không để λ giảm về 0' với lý do mô hình sẽ phản ứng ngày "
+"càng chậm với trôi, và không có thực nghiệm nào tách riêng điều kiện này.\n\n"
+"Kết quả đo được: hình phạt lớn nhất là sau trôi ĐỘT NGỘT (18,6 điểm) và gần như bằng "
+"không dưới trôi KÉO DÀI (0,8 điểm). Ngược hẳn với cách diễn đạt của bài báo, vốn gợi "
+"ý rằng trôi liên tục mới là nơi mô hình đóng băng chịu thiệt nhất.\n\n"
+"Giải thích cơ chế — đây là phần quan trọng: dưới trôi kéo dài (xoay 0,01 rad mỗi "
+"bước), λ hằng số cũng chỉ đạt 88,1 vì khái niệm di chuyển nhanh hơn mọi bước cố định; "
+"đã không bám được thì giảm λ cũng chẳng mất thêm gì. Ngược lại, sau khi khái niệm bị "
+"lấy mẫu lại, λ còn sống thì học lại được khái niệm mới, λ đóng băng thì không — nên "
+"mất trọn 18,6 điểm.\n\n"
+"Phòng câu hỏi 'có phải do λ_0 = 0,01 quá nhỏ không': đã kiểm tra trên dải 50 lần, "
+"λ_0 ∈ {0,01; 0,1; 0,5}. Hình phạt ở trôi kéo dài giữ nguyên mức nhỏ (1,0 / 1,2 / 1,4) "
+"ở mọi λ_0, nên không phải hiện tượng giả do tham số.\n\n"
+"Kết luận cần chốt: điều kiện này thực chất nói về khả năng PHỤC HỒI sau gián đoạn, "
+"chứ không phải về việc bám theo trôi liên tục.",
+# 19 -------------------------------------------------------------------------
+"PHƯƠNG PHÁP BỘ ĐỆM (~2 phút). Chỉ vào hình trước khi nói: đường kNN gần như nằm "
+"ngang.\n\n"
+"Số liệu: kNN dao động 0,6 điểm qua cả năm kịch bản (72,7 đến 73,3), trong khi SGD "
+"dao động 9,2 điểm (88,1 đến 97,3).\n\n"
+"Giải thích: trôi hầu như không làm kNN tệ đi, vì kNN chưa bao giờ tích lũy được gì "
+"để trôi làm hỏng. Mô hình chính là 100 mẫu gần nhất, và 100 mẫu gần nhất thì luôn "
+"thuộc khái niệm hiện tại dù có trôi hay không.\n\n"
+"Điểm đóng góp của slide: bài báo nêu HAI nhận xét riêng biệt — mục 7 nói năng lực bị "
+"chặn bởi kích thước bộ đệm, và Hình 5a nhận xét kNN không có xu hướng tăng ngay cả "
+"khi khái niệm đứng yên. Thực ra đó là CÙNG một tính chất: không tích lũy được thì "
+"vừa bị chặn trên, vừa không bị trôi làm hại. Trần năng lực và tính trơ là một.\n\n"
+"Nếu bị hỏi về SAMkNN: SAMkNN khắc phục đúng điểm này bằng bộ nhớ dài hạn, và đó là "
+"lý do nó tốt hơn kNN thuần trong Bảng 3.",
+# 20 -------------------------------------------------------------------------
+"THAM SỐ KHÔNG ĐƯỢC NÊU (~2 phút). Ba tham số bài báo không ghi, xếp theo mức ảnh "
+"hưởng.\n\n"
+"Quan trọng nhất là số chiều dữ liệu tổng hợp: SGD đạt 57,7 / 74,5 / 83,1 / 92,2 ứng "
+"với d = 2 / 5 / 10 / 20. Biên độ này lớn hơn chênh lệch giữa bất kỳ hai phương pháp "
+"nào trong Bảng 3.\n\n"
+"Hệ quả: hàng Synthetic của bài báo (93,6–96,0) chỉ đạt được ở d lớn, KHÔNG đạt được "
+"ở d = 2 như chính Hình 4 của bài báo vẽ. Ai trích dẫn cột đó nên biết nó phụ thuộc "
+"vào một tham số tự do không được công bố.\n\n"
+"Giải thích nguyên nhân nếu có thời gian: phép quay ở đây là quay Givens trong một "
+"mặt phẳng tọa độ, nên chỉ làm nhiễu 2 trong d thành phần — d càng lớn thì càng nhiều "
+"phần của θ sống sót sau mỗi bước. Cũng có thể bài báo hiểu 'ma trận quay góc 0,01' "
+"theo nghĩa khác (quay ngẫu nhiên toàn phần), khi đó phụ thuộc vào d sẽ biến mất. "
+"Văn bản không cho phép kết luận, nên nêu là điểm chưa giải quyết chứ đừng khẳng định.\n\n"
+"Quan sát kèm theo, khá bất ngờ: trên luồng Synthetic, SGD thuần đạt 92,2 còn PBF-SGD "
+"chỉ 88,5 — khai triển cơ sở làm TỆ ĐI. Lý do: khái niệm ở đó là siêu phẳng θᵀx = 0, "
+"tuyến tính theo định nghĩa, nên cơ sở đa thức bậc 3 thêm 1.770 tham số chỉ đóng góp "
+"phương sai mà không thêm năng lực biểu diễn. Khai triển cơ sở là một canh bạc đặt vào "
+"tính phi tuyến, và đây đúng là ô mà canh bạc đó chắc chắn thua.",
+# 21 -------------------------------------------------------------------------
+"CHUYỂN MỤC. 'Bài báo 2018 đề xuất dự báo θ nhưng không xây dựng. Phần này xem điều "
+"gì đã xảy ra sau đó.'",
+# 22 -------------------------------------------------------------------------
+"BỐN HƯỚNG TIẾP CẬN (~2 phút). Đọc bảng nhanh, dừng lại ở hàng cuối.\n\n"
+"Ba hướng đầu đều mang tính phản ứng: chuẩn hóa xử lý phân phối biên; fast/slow cân "
+"bằng giữa thích nghi nhanh và nhớ lại mẫu cũ; bể khái niệm giả định khái niệm sẽ "
+"quay lại nên lưu sẵn mô hình cho từng khái niệm.\n\n"
+"Chỉ Proceed (KDD'25) làm đúng điều Read lập luận. Cơ chế: ước lượng độ trôi giữa dữ "
+"liệu huấn luyện gần nhất và mẫu kiểm tra hiện tại, rồi dùng một bộ sinh ĐƯỢC HỌC để "
+"chuyển ước lượng đó thành điều chỉnh tham số — tức là một ánh xạ từ dịch chuyển trong "
+"không gian khái niệm sang dịch chuyển trong không gian tham số. Bộ sinh được huấn "
+"luyện trước trên các kiểu trôi tổng hợp đa dạng.\n\n"
+"Câu chốt nên nói rõ ràng: Read lập luận rằng giải bài toán trôi đồng nghĩa với dự báo "
+"θ, nhưng không xây dựng. Bảy năm sau Proceed xây dựng đúng ánh xạ đó, theo đúng hướng "
+"ông đề xuất. Đây là lý do bài báo 2018 vẫn đáng đọc.\n\n"
+"Phân biệt với động lượng (momentum): động lượng ngoại suy tuyến tính trên gradient; "
+"Proceed học hẳn một ánh xạ. Đây cũng là nền cho thí nghiệm A ở slide 26.",
+# 23 -------------------------------------------------------------------------
+"MÔ HÌNH NỀN TẢNG (~2 phút). Ý chính: trôi khái niệm không biến mất, chỉ đổi vị trí.\n\n"
+"Các mô hình nền tảng cho chuỗi thời gian (Chronos, Moirai và các mô hình kế tiếp) "
+"được huấn luyện trước trên kho dữ liệu lớn và dùng ở chế độ zero-shot. Dữ liệu luồng "
+"vẫn trôi như thường.\n\n"
+"Hướng 1 — thích nghi hộp đen: nếu mô hình được phục vụ qua API thương mại thì không "
+"thể sửa trọng số. Công trình gần đây thích nghi bằng cách học CẤU TRÚC SAI SỐ của mô "
+"hình theo ngữ cảnh, rồi hiệu chỉnh đầu ra.\n\n"
+"Hướng 2 — tiên nghiệm kháng trôi: đưa giả định 'mô hình thay đổi theo thời gian' vào "
+"ngay trong tiên nghiệm học trong ngữ cảnh, để mô hình học cách ước lượng, thích nghi "
+"và ngoại suy sự thay đổi (Drift-Resilient TabPFN, NeurIPS'24).\n\n"
+"Liên hệ ngược về phần 2: cả hai vẫn là thích nghi liên tục theo đúng nghĩa đã định "
+"nghĩa — tham số chỉ nằm ở chỗ khác, trong ngữ cảnh hoặc trong bộ hiệu chỉnh phần dư, "
+"chứ không nằm trong trọng số.",
+# 24 -------------------------------------------------------------------------
+"CHUYỂN MỤC. 'Phần cuối: những gì chưa ai giải quyết, và những thí nghiệm có thể làm "
+"ngay trên bộ công cụ hiện có.'",
+# 25 -------------------------------------------------------------------------
+"VẤN ĐỀ MỞ (~2 phút). Ba vấn đề, vấn đề đầu là quan trọng nhất.\n\n"
+"(1) Chưa có tiêu chí phân biệt trôi thật với ngữ cảnh bị bỏ sót. CDS cho rằng p(y|x) "
+"chỉ CÓ VẺ thay đổi vì thiếu biến c; Read cho rằng θ thật sự di chuyển trong Θ. Nếu c "
+"quan sát được và có chu kỳ thì bám theo là lãng phí; nếu c tiềm ẩn và không lặp thì "
+"điều kiện hóa là bất khả. Không công trình nào chỉ ra đang ở trường hợp nào — mà đây "
+"lại là câu hỏi phải trả lời TRƯỚC khi chọn phương pháp.\n\n"
+"(2) Trôi lặp lại và trôi kéo dài chia đôi không gian phương pháp: bể khái niệm giả "
+"định khái niệm quay lại, bộ bám theo giả định dịch chuyển trơn. Ranh giới giữa hai "
+"giả định này chưa được đặc tả.\n\n"
+"(3) Đánh giá vẫn tổng hợp và giả định nhãn tức thì, trong khi các ứng dụng làm nên "
+"động lực của lĩnh vực đều không như vậy. Nhắc lại slide 10 nếu cần.",
+# 26 -------------------------------------------------------------------------
+"THÍ NGHIỆM ĐỀ XUẤT (~3 phút). Mỗi thí nghiệm kèm một dự đoán CÓ THỂ SAI — đó là điều "
+"phân biệt đề xuất nghiên cứu với mong muốn.\n\n"
+"Thứ tự trình bày nên là D → A → C → B: rẻ nhất và chắc chắn nhất trước, tham vọng "
+"nhất sau cùng, vì người nghe thường đánh giá thấp một danh sách mở đầu bằng thí "
+"nghiệm khó nhất.\n\n"
+"D (rẻ nhất): quét lưới tốc độ trôi × λ, tìm λ tối ưu cho mỗi tốc độ, khớp số mũ trên "
+"đồ thị log-log. Nếu ra gần 0,5 thì biến cảnh báo ở mục 5 thành quy tắc chỉnh tham số.\n\n"
+"A: giải thích vì sao động lượng không giúp gì. Quỹ đạo thật là phép QUAY, tức đường "
+"cong, còn động lượng ngoại suy TUYẾN TÍNH — nên về dài hạn triệt tiêu. Thay bằng bộ "
+"ngoại suy khớp đúng dạng hàm (ước lượng ma trận quay từ lịch sử θ̂). Dự đoán có thể "
+"sai: nó phải thu hẹp khoảng cách bám ở trôi tăng dần VÀ không có tác dụng ở trôi đột "
+"ngột — nếu giúp ở mọi nơi thì chỉ là tăng hệ số khuếch đại, tức không chứng minh được gì.\n\n"
+"C: quét chu kỳ lặp, so bộ bám theo với bể khái niệm, tìm điểm giao p*. Đây là ranh "
+"giới trung thực cho chính luận điểm của mình, nên trình bày nó làm tăng độ tin cậy.\n\n"
+"B (để cuối, là thí nghiệm muốn người nghe nhớ): trả lời trực tiếp vấn đề mở thứ nhất. "
+"Thêm một kiểu trôi mới trong đó θ phụ thuộc một ngữ cảnh có chu kỳ QUAN SÁT ĐƯỢC, rồi "
+"so hai chẩn đoán: tự tương quan của phần dư (chẩn đoán kiểu Read) và thông tin tương "
+"hỗ giữa phần dư với ngữ cảnh (chẩn đoán kiểu CDS). Dự đoán: tự tương quan phát hiện "
+"CẢ HAI nên không phân biệt được, còn thông tin tương hỗ chỉ phát hiện trường hợp thứ "
+"hai. Nếu đúng, ta có một quy tắc quyết định chưa ai công bố.\n\n"
+"Lý do B khả thi ngay: Electricity đã có sẵn ngữ cảnh chu kỳ quan sát được (48 khung "
+"nửa giờ trong ngày, và thứ trong tuần), còn luồng tổng hợp thì cho biết θ thật — nên "
+"dựng và tách được cả hai trường hợp trên cùng một bộ công cụ.",
+# 27 -------------------------------------------------------------------------
+"TÓM TẮT (~1 phút). Sáu ý, đọc nhanh, không giải thích lại.\n\n"
+"Nếu còn thời gian, nên kết thúc bằng câu hỏi mở ở slide 26 thay vì bằng slide tóm "
+"tắt: kết ở một câu hỏi mà mình có điều kiện trả lời sẽ mở ra trao đổi, và đó cũng là "
+"cách xin được buổi làm việc tiếp theo.\n\n"
+"Câu hỏi có thể gặp và hướng trả lời:\n"
+"• 'Sao không dùng scikit-multiflow cho nhanh?' — vì mục tiêu là truy được mọi con số "
+"về mã nguồn đọc được, và vì bản cài đặt lại đã phát hiện ra chính những chỗ bài báo "
+"không ghi rõ.\n"
+"• 'Kết quả không khớp thì có phải bản cài đặt sai?' — hai trong ba phương pháp khớp "
+"trong 2 điểm, ADWIN được kiểm chứng độc lập, và các sai lệch đều truy được nguyên "
+"nhân cụ thể (bậc đa thức, cách nén bộ nhớ dài hạn).\n"
+"• 'Bài báo 2018 còn giá trị không?' — luận điểm cấu trúc (cây không có Δθ) vẫn đúng "
+"và không cần thực nghiệm; còn đề xuất dự báo θ thì đã được Proceed hiện thực hóa năm "
+"2025.",
 ]
-
 
 
 # 1. Title -----------------------------------------------------------------
