@@ -5,3 +5,7 @@ dataset/*/
 # Python
 __pycache__/
 *.py[cod]
+
+# MOA benchmarks for data-drift/ (106 MB extracted) — refetch with data/fetch.sh
+data-drift/data/*.arff
+data-drift/data/*.zip
