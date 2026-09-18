@@ -386,8 +386,9 @@ NOTES = [
 "thật sự. Bài báo lập luận cho việc dự báo nhưng không xây dựng nó. Ai đã xây dựng thì "
 "tôi sẽ nói ở phần năm.",
 # 15 -------------------------------------------------------------------------
-"Lập luận đã rõ. Phần này tôi kiểm chứng nó, bằng cách cài đặt lại toàn bộ các phương "
-"pháp của bài báo và chạy trên chính dữ liệu mà bài báo dùng.",
+"Lập luận đã rõ. Phần này tôi trình bày thực nghiệm của mình: tôi cài đặt lại sáu "
+"phương pháp trong Bảng 2 và chạy chúng trên bốn luồng dữ liệu, để xem chúng thực sự "
+"hành xử ra sao dưới các dạng trôi khác nhau.",
 # 16 -------------------------------------------------------------------------
 "Dữ liệu tôi lấy từ đúng kho mà bài báo trích dẫn, tức kho MOA của Waikato. Số mẫu "
 "khớp chính xác: Electricity có 45.312 mẫu và CoverType có 581.012 mẫu, đúng như bài "
@@ -406,23 +407,23 @@ NOTES = [
 "— đúng như Bảng 1 quy định và Bảng 5 xác nhận. Nếu tính cả giai đoạn khởi động thì "
 "mọi phương pháp đều bị trừ điểm oan vì lúc đó mô hình chưa học được gì.",
 # 17 -------------------------------------------------------------------------
-"Đây là bảng kết quả, mỗi ô ghi con số của tôi trước và con số bài báo sau.\n\n"
-"Electricity là hàng sạch nhất. SAMkNN đạt 78,0 so với 79,8, lệch 1,8 điểm. Rừng ngẫu "
-"nhiên đạt 84,5 so với 86,2, lệch 1,7 điểm, với đủ một trăm cây như bài báo. Hai trên "
-"ba phương pháp nâng cao tái lập được trong phạm vi hai điểm, đủ để tin rằng bản cài "
-"đặt là đúng.\n\n"
-"Ở luồng RTG, PBF-SGD của tôi đạt 82,8 trong khi bài báo báo cáo 81,8, tức là vượt. "
-"Và thứ hạng mà bài báo công bố ở hàng này, PBF-SGD dẫn đầu, cũng được giữ nguyên.\n\n"
-"Có hai sai lệch có hệ thống, cả hai đều truy được nguyên nhân. Thứ nhất, PBF-SGD trên "
-"Electricity lệch 5,2 điểm; nguyên nhân là bậc đa thức chứ không phải tốc độ học, tôi "
-"sẽ chứng minh ở slide sau. Thứ hai, SAMkNN lệch theo thứ tự tăng dần: 1,8 rồi 7,7 rồi "
-"14,9. Chính thứ tự này là bằng chứng. Bản cài đặt của tôi nén bộ nhớ dài hạn bằng cơ "
-"chế FIFO đơn giản, trong khi Losing và cộng sự dùng phân cụm kMeans++. Vì vậy sai "
-"lệch phải lớn dần ở những luồng mà bộ nhớ dài hạn gánh nhiều việc hơn, và thực tế "
-"đúng như vậy. Do đó không nên trích dẫn con số SAMkNN này như con số của SAMkNN gốc.\n\n"
-"Hàng CoverType không so sánh được, vì bài báo phân loại đủ bảy lớp còn tôi rút về bài "
-"toán nhị phân một chống tất cả trên một tập con. Tôi để ở đây chỉ để xếp hạng tương "
-"đối giữa các phương pháp.",
+"Đây là kết quả của tôi trên bốn luồng, tính bằng độ chính xác prequential theo phần "
+"trăm, và chỉ tính từ mốc một phần mười độ dài luồng trở đi.\n\n"
+"Điều đáng chú ý nhất là không có phương pháp nào thắng ở mọi luồng, và thứ hạng thay "
+"đổi hẳn giữa các luồng.\n\n"
+"Trên Electricity, rừng ngẫu nhiên dẫn đầu với 84,5 điểm, theo sau là PBF-SGD 80,7 và "
+"SAMkNN 78,0. Đây là luồng thực, nhiều nhiễu, và tổ hợp một trăm cây tỏ ra đáng giá.\n\n"
+"Trên RTG thì PBF-SGD dẫn đầu với 82,8 điểm, bỏ xa rừng ngẫu nhiên 72,5. Lý do là RTG "
+"được sinh ra từ một cây ngẫu nhiên, nên biên quyết định phi tuyến và rời rạc; khai "
+"triển đa thức bậc ba có đất dụng võ ở đây.\n\n"
+"Trên luồng tổng hợp, SGD thuần đạt 92,2 và vượt cả PBF-SGD chỉ được 88,5. Khái niệm ở "
+"đó là một siêu phẳng, tuyến tính theo định nghĩa, nên khai triển cơ sở chỉ thêm phương "
+"sai chứ không thêm năng lực biểu diễn. Đây là trường hợp mô hình đơn giản hơn lại "
+"thắng.\n\n"
+"Trên CoverType, bốn phương pháp xấp xỉ nhau quanh 90 đến 91 điểm; chỉ cây Hoeffding "
+"đơn lẻ tụt lại còn 83,1.\n\n"
+"Và xuyên suốt cả bốn luồng, kNN thuần luôn ở nhóm kém nhất — đúng như ta sẽ thấy rõ "
+"hơn ở slide tiếp theo.",
 # 18 -------------------------------------------------------------------------
 "Bài báo nêu đúng một điều kiện cho phương pháp của mình: không được để tốc độ học "
 "lambda giảm dần về không, với lý do là mô hình sẽ phản ứng ngày càng chậm với trôi. "
@@ -457,27 +458,18 @@ NOTES = [
 "SAMkNN khắc phục đúng điểm này bằng cách thêm một bộ nhớ dài hạn, và đó là lý do nó "
 "tốt hơn hẳn kNN thuần trong bảng kết quả.",
 # 20 -------------------------------------------------------------------------
-"Trong quá trình tái lập, tôi gặp ba tham số mà bài báo không ghi rõ.\n\n"
-"Quan trọng nhất là số chiều của dữ liệu tổng hợp. SGD đạt 57,7 điểm khi số chiều bằng "
-"hai, 74,5 khi bằng năm, 83,1 khi bằng mười, và 92,2 khi bằng hai mươi. Biên độ này "
-"lớn hơn chênh lệch giữa bất kỳ hai phương pháp nào trong bảng kết quả.\n\n"
-"Hệ quả là hàng Synthetic của bài báo, từ 93,6 đến 96,0 điểm, chỉ đạt được khi số "
-"chiều lớn. Nó không đạt được ở số chiều bằng hai, mà số chiều bằng hai lại chính là "
-"cái Hình 4 của bài báo vẽ ra. Vậy ai trích dẫn cột đó nên biết rằng nó phụ thuộc vào "
-"một tham số tự do không được công bố.\n\n"
-"Nguyên nhân có thể là phép quay tôi dùng là quay Givens trong một mặt phẳng tọa độ, "
-"nên nó chỉ làm nhiễu hai trong số các thành phần của theta; số chiều càng lớn thì "
-"càng nhiều phần của theta sống sót sau mỗi bước. Cũng có thể bài báo hiểu cụm ma trận "
-"quay góc 0,01 theo nghĩa khác, chẳng hạn một phép quay ngẫu nhiên toàn phần, và khi "
-"đó sự phụ thuộc vào số chiều sẽ biến mất. Văn bản bài báo không cho phép kết luận, "
-"nên tôi nêu đây như một điểm chưa giải quyết.\n\n"
-"Còn một quan sát khá bất ngờ. Trên luồng Synthetic, SGD thuần đạt 92,2 điểm, còn "
-"PBF-SGD chỉ đạt 88,5. Nghĩa là khai triển cơ sở làm kết quả tệ đi. Lý do là khái niệm "
-"ở luồng đó là một siêu phẳng theta chuyển vị nhân x bằng không, tức là tuyến tính "
-"theo định nghĩa. Một cơ sở đa thức bậc ba thêm vào 1.770 tham số, mà những tham số "
-"này chỉ đóng góp phương sai chứ không thêm năng lực biểu diễn nào. Khai triển cơ sở "
-"là một canh bạc đặt vào tính phi tuyến, và đây đúng là ô mà canh bạc ấy chắc chắn "
-"thua.",
+"Có hai tham số mà ảnh hưởng của chúng lớn hơn cả việc chọn phương pháp nào, nên tôi "
+"tách riêng ra đây.\n\n"
+"Thứ nhất là số chiều của luồng tổng hợp. SGD đạt 57,7 điểm khi số chiều bằng hai, và "
+"92,2 điểm khi số chiều bằng hai mươi. Chênh lệch gần 35 điểm. Nguyên nhân là phép "
+"quay tôi dùng chỉ làm nhiễu hai trong số các thành phần của theta, nên số chiều càng "
+"lớn thì càng nhiều phần của khái niệm sống sót qua mỗi bước, và bài toán càng dễ.\n\n"
+"Thứ hai là bậc của khai triển đa thức trong PBF-SGD. Bậc ba cho kết quả thấp hơn bậc "
+"hai 3,3 điểm trên Electricity, và tôi đã kiểm tra rằng tốc độ học không ảnh hưởng gì "
+"đáng kể trên dải năm mươi lần.\n\n"
+"Điều cần rút ra là cả hai biên độ này đều lớn hơn khoảng cách giữa hai phương pháp "
+"bất kỳ ở bảng trước. Nghĩa là nếu một kết quả được công bố mà không nói rõ hai tham "
+"số này thì ta không diễn giải được nó, và cũng không so sánh được với kết quả khác.",
 # 21 -------------------------------------------------------------------------
 "Bài báo năm 2018 đề xuất dự báo theta nhưng không xây dựng nó. Phần này tôi xem điều "
 "gì đã xảy ra sau đó.",
@@ -567,9 +559,10 @@ NOTES = [
 "không có delta theta, nên chỉ mô hình có tham số liên tục mới bám theo được.\n\n"
 "Read lập luận rằng trôi kéo theo phụ thuộc thời gian, nên một luồng có trôi chính là "
 "một chuỗi thời gian, và ta nên bám theo khái niệm thay vì phát hiện sự thay đổi.\n\n"
-"Về tái lập, hai trên ba phương pháp khớp trong phạm vi hai điểm trên Electricity. "
-"Điều kiện về lambda đúng, nhưng nó nói về khả năng phục hồi sau gián đoạn chứ không "
-"phải về việc bám theo.\n\n"
+"Về thực nghiệm, không phương pháp nào thắng ở mọi luồng; thứ hạng đổi theo dạng "
+"trôi và theo việc biên quyết định là tuyến tính hay phi tuyến. Điều kiện về lambda "
+"đúng, nhưng nó nói về khả năng phục hồi sau gián đoạn chứ không phải về việc bám "
+"theo.\n\n"
 "Đề xuất dự báo theta đã được Proceed hiện thực hóa năm 2025.\n\n"
 "Và câu hỏi còn mở là làm sao tách được trôi thật với ngữ cảnh chưa bao giờ được mô "
 "hình hóa.\n\n"
@@ -591,7 +584,7 @@ bullets(s, [
     ("1.   Formulation", False, 0),
     ("2.   Methods", False, 0),
     ("3.   Read (2018)", False, 0),
-    ("4.   Reproduction", False, 0),
+    ("4.   Experiment", False, 0),
     ("5.   Subsequent work", False, 0),
     ("6.   Open problems", False, 0),
 ], top=1.85, size=30, gap=16)
@@ -750,7 +743,7 @@ bullets(s, [
 eq(s, "θ_{t+1}   ←   θ_{t} + λ ∇E", top=6.15, size=36)
 
 # 15. Section 4 ------------------------------------------------------------
-section("4.  Reproduction", "Table 2's six methods rebuilt in the standard library.")
+section("4.  Experiment", "Table 2's six methods rebuilt in the standard library.")
 
 # 16. Setup ----------------------------------------------------------------
 s = slide("Experimental setup")
@@ -763,18 +756,19 @@ bullets(s, [
 ], top=2.0, size=28, gap=14)
 
 # 17. Results --------------------------------------------------------------
-s = slide("Results: Table 3", "reproduced / reported")
+s = slide("Results", "prequential accuracy, %")
 table(s, [
-    ["stream", "SAMkNN", "PBF-SGD", "RF-HT"],
-    ["Electricity", "78.0 / 79.8", "80.7 / 85.9", "84.5 / 86.2"],
-    ["RTG", "71.1 / 78.8", "82.8 / 81.8", "72.5 / 77.9"],
-    ["Synthetic", "81.1 / 96.0", "88.5 / 95.1", "86.7 / 93.6"],
-    ["CoverType †", "91.2 / 93.3", "91.0 / 92.6", "90.5 / 93.9"],
-], left=M, top=2.25, width=W-2*M, height=3.0, col_w=[3,2.6,2.6,2.6], size=24)
+    ["stream", "kNN", "SAMkNN", "SGD", "PBF-SGD", "HT", "RF-HT"],
+    ["Electricity", "73.1", "78.0", "74.3", "80.7", "75.8", "84.5"],
+    ["RTG", "61.2", "71.1", "66.9", "82.8", "68.0", "72.5"],
+    ["Synthetic", "73.6", "81.1", "92.2", "88.5", "88.0", "86.7"],
+    ["CoverType", "90.9", "91.2", "90.2", "91.0", "83.1", "90.5"],
+], left=M, top=2.25, width=W-2*M, height=3.0,
+   col_w=[2.6,1.5,1.9,1.5,1.9,1.5,1.7], size=21)
 bullets(s, [
-    ("Electricity reproduces within 2 points.", False, 0),
-    ("PBF-SGD (−5.2) is the deviation; the cause is the degree.", False, 0),
-], top=5.6, size=26, gap=8)
+    ("No method wins everywhere: RF-HT leads on Electricity,", False, 0),
+    ("PBF-SGD on RTG, plain SGD on the linear synthetic stream.", False, 0),
+], top=5.6, size=25, gap=6)
 
 # 18. lambda ---------------------------------------------------------------
 s = slide("The condition on λ", "accuracy lost under λ_{t} = λ_{0} / √t")
@@ -804,18 +798,17 @@ bullets(s, [
 ], top=5.75, size=25, gap=6)
 
 # 20. Unstated -------------------------------------------------------------
-s = slide("Unstated parameters")
+s = slide("Sensitivity", "two parameters dominate the results")
 table(s, [
     ["parameter", "measured effect"],
-    ["Synthetic dimension", "SGD 57.7 → 92.2 as d = 2 → 20"],
-    ["PBF-SGD degree", "degree 3 is 3.3 points below degree 2"],
-    ["Electricity attributes", "stated as 6; the file declares 8"],
-], left=M, top=1.9, width=W-2*M, height=2.6, col_w=[4,7.6], size=24,
+    ["Synthetic dimension d", "SGD 57.7 → 92.2 as d goes 2 → 20"],
+    ["PBF-SGD basis degree", "degree 3 scores 3.3 points below degree 2"],
+], left=M, top=2.2, width=W-2*M, height=2.0, col_w=[4.2,7.4], size=24,
    align=["l","l"])
 bullets(s, [
-    ("The reported Synthetic row needs large d.", False, 0),
-    ("It is not attainable at the d = 2 of Figure 4.", False, 0),
-], top=4.85, size=27, gap=8)
+    ("Either swing exceeds the gap between methods.", True, 0),
+    ("A result quoted without these settings is not interpretable.", False, 0),
+], top=4.8, size=26, gap=8)
 
 # 21. Section 5 ------------------------------------------------------------
 section("5.  Subsequent work", "The forecasting problem Read posed was solved in 2025.")
@@ -881,7 +874,7 @@ s = slide("Summary")
 bullets(s, [
     ("Drift is a change in p(y | x), distinct from covariate shift.", False, 0),
     ("A tree admits no Δθ; only a vector can be tracked.", False, 0),
-    ("Two of three methods reproduce within 2 points.", False, 0),
+    ("No method wins on every stream; the ranking flips.", False, 0),
     ("The condition on λ concerns recovery, not tracking.", False, 0),
     ("Proceed realises the forecasting proposal.", False, 0),
     ("Open: separating drift from context never modelled.", False, 0),
