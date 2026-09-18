@@ -289,6 +289,30 @@ NOTES = [
 "theo thời gian này có thay đổi hay không. Tức là bản thân nó đã là một phương pháp "
 "chuỗi thời gian rồi, chỉ là không tự nhận như vậy. Đây chính là điểm bài báo ở phần "
 "ba khai thác.",
+# 9b -------------------------------------------------------------------------
+"Tôi nói kỹ hơn một chút về ba phép kiểm định này, vì chúng đại diện cho ba cách nghĩ "
+"khác nhau về cùng một tín hiệu.\n\n"
+"DDM theo dõi trực tiếp tỷ lệ lỗi. Tại mỗi bước nó có tỷ lệ lỗi p chỉ số i và sai số "
+"chuẩn nhị thức s chỉ số i, bằng căn của p nhân một trừ p chia i. Nó ghi nhớ giá trị "
+"nhỏ nhất từng đạt được trong suốt luồng, và lấy đó làm mốc tham chiếu, với ý là mô "
+"hình khi khớp tốt nhất thì sai bao nhiêu. Khi tổng hiện tại vượt mốc đó ba lần độ "
+"lệch chuẩn thì báo trôi; ở mức hai lần thì mới chỉ là cảnh báo, và thường được dùng "
+"để bắt đầu gom dữ liệu cho mô hình thay thế. Cách này đơn giản và nhạy với trôi đột "
+"ngột, nhưng vì mốc tham chiếu là giá trị nhỏ nhất từng thấy nên nó không tự quên đi "
+"quá khứ.\n\n"
+"EDDM đổi đại lượng quan sát. Thay vì tỷ lệ lỗi, nó theo dõi khoảng cách giữa hai lỗi "
+"liên tiếp. Ý tưởng là khi mô hình đang tốt thì các lỗi thưa ra, khoảng cách giữa "
+"chúng lớn dần; còn khi khái niệm trôi thì các lỗi dồn lại gần nhau. Nó so tỷ số giữa "
+"giá trị hiện tại và giá trị lớn nhất từng đạt, và báo trôi khi tỷ số này tụt xuống "
+"dưới ngưỡng beta. Vì đo khoảng cách chứ không đo tỷ lệ, EDDM nhạy hơn với trôi dần "
+"dần, là trường hợp mà tỷ lệ lỗi thay đổi quá chậm để DDM kịp nhận ra.\n\n"
+"ADWIN khác hẳn hai cái trên ở chỗ nó không cần chọn trước kích thước cửa sổ. Nó giữ "
+"một cửa sổ các quan sát gần nhất, rồi xét mọi cách cắt cửa sổ đó thành hai phần, "
+"phần cũ và phần mới. Nếu trung bình của hai phần chênh nhau quá một ngưỡng epsilon "
+"thì nó kết luận rằng đã có thay đổi, và cắt bỏ phần cũ đi. Ngưỡng epsilon được tính "
+"từ phương sai trong cửa sổ và kích thước của hai phần, sao cho xác suất báo động giả "
+"bị chặn bởi delta. Đây là điểm mạnh của nó: có bảo đảm hình thức, và kích thước cửa "
+"sổ tự điều chỉnh theo dữ liệu thay vì do ta đặt tay.",
 # 10 -------------------------------------------------------------------------
 "Quy trình đánh giá hiện nay có ba hạn chế.\n\n"
 "Thứ nhất, dữ liệu tổng hợp chiếm đa số. Các luồng chuẩn thường chuyển giữa những khái "
@@ -648,6 +672,25 @@ bullets(s, [
     ("A detector asks whether the series E_{t} has changed.", False, 0),
     ("Every detector is already a time-series method.", True, 0),
 ], top=5.35, size=27, gap=8)
+
+# 9b. Detectors in detail ---------------------------------------------------
+s = slide("The three tests", "what each detector actually computes")
+_y = 1.95
+for _name, _formula, _desc in (
+    ("DDM (2004) — error rate",
+     "p_{i} + s_{i}   ≥   p_{min} + 3·s_{min}",
+     "Here s is the binomial standard error; the minimum ever seen is the reference."),
+    ("EDDM (2006) — distance between errors",
+     "(p′_{i} + 2s′_{i}) ⁄ (p′_{max} + 2s′_{max})   <   β",
+     "Here p′ is the mean gap between errors. Errors bunching up signals drift."),
+    ("ADWIN (2007) — two-window test",
+     "| μ_{W0} − μ_{W1} |   >   ε_{cut}",
+     "Every split of the window is tested; ε_{cut} bounds false positives by δ."),
+):
+    bullets(s, [(_name, True, 0)], top=_y, size=24)
+    eq(s, _formula, top=_y + 0.42, size=26)
+    bullets(s, [(_desc, False, 0)], top=_y + 1.0, size=21)
+    _y += 1.62
 
 # 10. Evaluation -----------------------------------------------------------
 s = slide("Limits of the evaluation protocol")
