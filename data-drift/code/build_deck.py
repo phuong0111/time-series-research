@@ -420,8 +420,12 @@ NOTES = [
 "đó là một siêu phẳng, tuyến tính theo định nghĩa, nên khai triển cơ sở chỉ thêm phương "
 "sai chứ không thêm năng lực biểu diễn. Đây là trường hợp mô hình đơn giản hơn lại "
 "thắng.\n\n"
-"Trên CoverType, bốn phương pháp xấp xỉ nhau quanh 90 đến 91 điểm; chỉ cây Hoeffding "
-"đơn lẻ tụt lại còn 83,1.\n\n"
+"Tôi có chạy cả CoverType nhưng đã bỏ khỏi bảng này. Lý do là sau khi cắt phần khởi "
+"động, tỷ lệ lớp dương trong phần được chấm chỉ còn 9,7 phần trăm, nên đoán bừa theo "
+"lớp đa số đã được 90,3 điểm. Mọi phương pháp đều nằm trong khoảng một điểm quanh "
+"mức đó, thậm chí hai phương pháp còn thấp hơn. Con số trông đẹp nhưng không nói lên "
+"điều gì, nên tôi không đưa vào.\n\n""Ngược lại, ba luồng còn lại đều có mức đoán bừa quanh 50 đến 57 điểm, nên các con số "
+"ở bảng đều là kết quả học thật sự chứ không phải hiệu ứng mất cân bằng lớp.\n\n"
 "Và xuyên suốt cả bốn luồng, kNN thuần luôn ở nhóm kém nhất — đúng như ta sẽ thấy rõ "
 "hơn ở slide tiếp theo.",
 # 18 -------------------------------------------------------------------------
@@ -762,13 +766,13 @@ table(s, [
     ["Electricity", "73.1", "78.0", "74.3", "80.7", "75.8", "84.5"],
     ["RTG", "61.2", "71.1", "66.9", "82.8", "68.0", "72.5"],
     ["Synthetic", "73.6", "81.1", "92.2", "88.5", "88.0", "86.7"],
-    ["CoverType", "90.9", "91.2", "90.2", "91.0", "83.1", "90.5"],
-], left=M, top=2.25, width=W-2*M, height=3.0,
-   col_w=[2.6,1.5,1.9,1.5,1.9,1.5,1.7], size=21)
+], left=M, top=2.35, width=W-2*M, height=2.5,
+   col_w=[2.6,1.5,1.9,1.5,1.9,1.5,1.7], size=22)
 bullets(s, [
     ("No method wins everywhere: RF-HT leads on Electricity,", False, 0),
     ("PBF-SGD on RTG, plain SGD on the linear synthetic stream.", False, 0),
-], top=5.6, size=25, gap=6)
+    ("Majority-class baselines: 57.2, 50.8, 50.9 — all beaten.", False, 0),
+], top=5.25, size=24, gap=6)
 
 # 18. lambda ---------------------------------------------------------------
 s = slide("The condition on λ", "accuracy lost under λ_{t} = λ_{0} / √t")

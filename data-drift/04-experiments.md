@@ -89,9 +89,16 @@ subspaces, Poisson(6) bagging and two-level warning/drift detection.
 | 10K, $d$=55 | PBF-SGD(2) | 91.0 | 92.6 | n/a |
 | | RF-HT | 90.5 | 93.9 | n/a |
 
-† Not comparable: the paper classifies all 7 classes, `data.py` binarises one-vs-rest,
-and we evaluate a 10K subset. Listed so the methods can be ranked on a second real
-stream, nothing more.
+† Not comparable, and not informative. Besides the 7-class/binary mismatch and the
+subset, `covtypeNorm.arff` is not randomly ordered — class 2 is concentrated in the
+opening rows, so once the $\tau_0$ warmup is removed only **9.7%** of scored instances
+are positive. The majority-class baseline is therefore **90.3%**: SAMkNN clears it by
+0.9, PBF-SGD by 0.7, kNN by 0.6, RF-HT by 0.2, while SGD is 0.1 **below** it and HT 7.2
+below. The row measures the base rate, not learning.
+
+For contrast, the baselines on the streams that do carry information are 57.2
+(Electricity), 50.8 (RTG) and 50.9 (Synthetic) — every method clears those by a wide
+margin, so those accuracies reflect real learning.
 
 Vanilla configurations, which the paper does not tabulate (kNN / SGD / HT):
 Electricity 73.1 / 74.3 / 75.8 · RTG 61.2 / 66.9 / 68.0 ·

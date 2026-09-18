@@ -128,9 +128,14 @@ unavailable, not merely unimplemented.
 
 ## Caveats
 
-- **CoverType is not comparable.** The paper classifies all 7 classes; `data.py`
-  binarises one-vs-rest and we evaluate a 10k subset. Reported only to rank methods
-  on a second real stream.
+- **CoverType is not comparable, and is not informative either.** The paper classifies
+  all 7 classes; `data.py` binarises one-vs-rest and we evaluate a 10k subset. Worse,
+  `covtypeNorm.arff` is not randomly ordered: class 2 is concentrated early, so after
+  the $\tau_0$ warmup only **9.7%** of the scored instances are positive and the
+  majority-class baseline is **90.3%**. Every method lands within a point of it and two
+  fall below. Those numbers measure the base rate, not learning — do not read the row
+  as "all methods do well here". The other three streams have baselines of 57.2, 50.8
+  and 50.9, and every method clears them comfortably.
 - **SAMkNN is structural, not a port.** LTM compression is capacity-bounded FIFO where
   Losing et al. use kMeans++ per class. Do not cite our SAMkNN numbers as theirs.
 - **PBF-SGD on CoverType runs at degree 2, not 3.** Degree 3 there is 30,855 monomials
